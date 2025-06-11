@@ -15,6 +15,8 @@ struct Product: Codable {
     var isFavorite: Bool?
     let image_url: String?
     let location: String?
+    let latitude: Double?
+    let longitude: Double?
     let created_at: String?
     let updated_at: String?
     let user_info: UserInfo?

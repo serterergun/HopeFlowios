@@ -26,6 +26,7 @@ class AuthManager {
             self.currentUser = user
             self.isAuthenticated = true
             UserDefaults.standard.set(true, forKey: "isAuthenticated")
+            NotificationCenter.default.post(name: .userDidLogin, object: nil)
         } catch {
             throw error
         }
@@ -37,6 +38,7 @@ class AuthManager {
             self.currentUser = user
             self.isAuthenticated = true
             UserDefaults.standard.set(true, forKey: "isAuthenticated")
+            NotificationCenter.default.post(name: .userDidLogin, object: nil)
         } catch {
             throw error
         }
@@ -48,6 +50,7 @@ class AuthManager {
         token = nil
         UserDefaults.standard.removeObject(forKey: "isAuthenticated")
         UserDefaults.standard.removeObject(forKey: "authToken")
+        NotificationCenter.default.post(name: .userDidLogout, object: nil)
         // Clear any stored auth tokens
     }
     
@@ -66,4 +69,14 @@ class AuthManager {
             }
         }
     }
+    
+    var isLoggedIn: Bool {
+        return currentUser != nil && token != nil
+    }
+}
+
+// Notification.Name extension
+extension Notification.Name {
+    static let userDidLogin = Notification.Name("userDidLogin")
+    static let userDidLogout = Notification.Name("userDidLogout")
 } 

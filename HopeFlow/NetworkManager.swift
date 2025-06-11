@@ -313,11 +313,44 @@ class NetworkManager {
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        if let token = AuthManager.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+        print("Listings Response:", response)
+        print("Listings Data:", String(data: data, encoding: .utf8) ?? "")
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-        return try JSONDecoder().decode([Product].self, from: data)
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["message"] {
+                throw NetworkError.serverError(errorMessage)
+            }
+            throw NetworkError.serverError("Failed to fetch listings. Status code: \(httpResponse.statusCode)")
+        }
+        
+        do {
+            let products = try JSONDecoder().decode([Product].self, from: data)
+            print("Fetched \(products.count) products for user \(userId)")
+            
+            // Gelen ürünlerin user_id'lerini kontrol et ve sadece istenen kullanıcının ürünlerini filtrele
+            let filteredProducts = products.filter { product in
+                guard let productUserId = product.user_id else { return false }
+                return productUserId == userId
+            }
+            
+            print("Filtered to \(filteredProducts.count) products for user \(userId)")
+            for product in filteredProducts {
+                print("Product ID:", product.id ?? "nil", "User ID:", product.user_id ?? "nil")
+            }
+            
+            return filteredProducts
+        } catch {
+            print("Decoding error:", error)
+            throw NetworkError.decodingError
+        }
     }
 
     func fetchPurchasesByUser(userId: Int) async throws -> [Product] {

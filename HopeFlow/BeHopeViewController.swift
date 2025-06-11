@@ -1,7 +1,7 @@
 import UIKit
 import CoreLocation
 
-class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIPickerViewDataSource, UIPickerViewDelegate {
+class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIPickerViewDataSource, UIPickerViewDelegate, UITextViewDelegate {
     // UI
     private var images: [UIImage] = []
     private let nameField = UITextField()
@@ -9,7 +9,17 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
     private let priceField = UITextField()
     private let usageField = UITextField()
     private let photosLabel = UILabel()
-    private var photosCollection: UICollectionView!
+    private var photosCollection: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 72, height: 72)
+        layout.minimumLineSpacing = 12
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .clear
+        cv.showsHorizontalScrollIndicator = false
+        return cv;
+    }()
     private let autoPriceLabel = UILabel()
     private let hopeItButton = UIButton(type: .system)
     private let categoryField = UITextField()
@@ -38,6 +48,7 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         // Usage Duration için ilk değer otomatik seçili olsun
         usagePicker.selectRow(0, inComponent: 0, animated: false)
         usageField.text = usageOptions[0]
+        descView.delegate = self
         fetchProducts()
     }
 
@@ -62,7 +73,12 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         photosLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(photosLabel)
         // Photos collection view
-        setupCollectionView()
+        view.addSubview(photosCollection)
+        photosCollection.translatesAutoresizingMaskIntoConstraints = false
+        photosCollection.dataSource = self
+        photosCollection.delegate = self
+        photosCollection.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
+        photosCollection.register(AddPhotoCell.self, forCellWithReuseIdentifier: "AddPhotoCell")
         // Description
         descView.font = commonFont
         descView.layer.cornerRadius = 8
@@ -126,10 +142,15 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             categoryField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             photosLabel.topAnchor.constraint(equalTo: categoryField.bottomAnchor, constant: 16),
             photosLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            descView.topAnchor.constraint(equalTo: photosLabel.bottomAnchor, constant: 8),
+            photosCollection.topAnchor.constraint(equalTo: photosLabel.bottomAnchor, constant: 10),
+            photosCollection.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            photosCollection.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            photosCollection.heightAnchor.constraint(equalToConstant: 72),
+            descView.topAnchor.constraint(equalTo: photosCollection.bottomAnchor, constant: 18),
             descView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             descView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            postcodeField.topAnchor.constraint(equalTo: descView.bottomAnchor, constant: 12),
+            descView.heightAnchor.constraint(equalToConstant: 80),
+            postcodeField.topAnchor.constraint(equalTo: descView.bottomAnchor, constant: 14),
             postcodeField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             postcodeField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             priceField.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 16),
@@ -151,82 +172,32 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         ])
     }
 
-    private func setupCollectionView() {
-        view.addSubview(photosCollection)
-        photosCollection.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            photosCollection.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            photosCollection.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            photosCollection.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            photosCollection.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-        photosCollection.delegate = self
-        photosCollection.dataSource = self
-
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-        layout.itemSize = CGSize(width: view.frame.width - 32, height: 120)
-        layout.headerReferenceSize = CGSize(width: view.frame.width, height: 50)
-        layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        photosCollection.collectionViewLayout = layout
-        
-        // Register cells and header
-        photosCollection.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
-        photosCollection.register(AddPhotoCell.self, forCellWithReuseIdentifier: "AddPhotoCell")
-        photosCollection.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
-    }
-
     // MARK: - UICollectionViewDataSource
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if collectionView == photosCollection {
-            return images.count + 1 // +1: Add photo cell
-        } else {
-            let category = Array(groupedProducts.keys)[section]
-            return groupedProducts[category]?.count ?? 0
-        }
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        return 1
     }
-
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return images.count + 1 // +1: Add photo cell
+    }
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        if collectionView == photosCollection {
-            if indexPath.item == 0 {
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "AddPhotoCell", for: indexPath) as! AddPhotoCell
-                return cell
-            } else {
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
-                cell.imageView.image = images[indexPath.item - 1]
-                cell.deleteButton.tag = indexPath.item - 1
-                cell.deleteButton.addTarget(self, action: #selector(deletePhoto(_:)), for: .touchUpInside)
-                return cell
-            }
+        if indexPath.item == 0 {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "AddPhotoCell", for: indexPath) as! AddPhotoCell
+            return cell
         } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProductCell", for: indexPath) as! ProductCell
-            let category = Array(groupedProducts.keys)[indexPath.section]
-            if let products = groupedProducts[category] {
-                let product = products[indexPath.item]
-                cell.configure(with: product)
-            }
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
+            cell.imageView.image = images[indexPath.item - 1]
+            cell.deleteButton.tag = indexPath.item - 1
+            cell.deleteButton.addTarget(self, action: #selector(deletePhoto(_:)), for: .touchUpInside)
             return cell
         }
     }
-
-    func numberOfSections(in collectionView: UICollectionView) -> Int {
-        if collectionView == photosCollection {
-            return 1
-        } else {
-            return groupedProducts.keys.count
-        }
-    }
-
-    // MARK: - Photo Collection
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        return CGSize(width: 80, height: 80)
-    }
+    // MARK: - UICollectionViewDelegate
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if indexPath.item == 0 {
             addPhotoTapped()
         }
     }
-
+    // MARK: - Add Photo
     @objc private func addPhotoTapped() {
         let picker = UIImagePickerController()
         picker.delegate = self
@@ -242,6 +213,11 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true)
+    }
+    @objc private func deletePhoto(_ sender: UIButton) {
+        let index = sender.tag
+        images.remove(at: index)
+        photosCollection.reloadData()
     }
     func textFieldDidEndEditing(_ textField: UITextField) {
         updateAutoPrice()
@@ -270,24 +246,45 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
     }
     @objc private func hopeItTapped() {
-        // Validate required fields
+        // Önce kullanıcı girişi kontrolü
+        guard let currentUser = AuthManager.shared.currentUser else {
+            let alert = UIAlertController(title: "Login Required", message: "Please login to add a product", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Login", style: .default) { _ in
+                let loginVC = LoginViewController()
+                loginVC.modalPresentationStyle = .fullScreen
+                self.present(loginVC, animated: true)
+            })
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            present(alert, animated: true)
+            return
+        }
+        guard let userId = currentUser.id else {
+            let alert = UIAlertController(title: "Error", message: "User ID not found. Please log out and log in again.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+
+        // Diğer alanların kontrolü
         guard let title = nameField.text, !title.isEmpty,
               let description = descView.text, !description.isEmpty,
               let originalPriceText = priceField.text, let originalPrice = Double(originalPriceText),
               let suggestedPriceText = suggestedPriceField.text, let suggestedPrice = Double(suggestedPriceText),
               let givenPriceText = setYourPriceField.text, let givenPrice = Double(givenPriceText),
-              let postCode = postcodeField.text, !postCode.isEmpty,
-              let userId = AuthManager.shared.currentUser?.id else {
+              let postCode = postcodeField.text, !postCode.isEmpty else {
             let alert = UIAlertController(title: "Error", message: "Please fill in all required fields", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
             return
         }
+
         let categoryId = categoryPicker.selectedRow(inComponent: 0) + 1
-        let usageDuration = usagePicker.selectedRow(inComponent: 1)
+        let usageDuration = usagePicker.selectedRow(inComponent: 0)
+        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Creating listing...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
+        
         Task {
             do {
                 let product = try await NetworkManager.shared.createListing(
@@ -354,12 +351,12 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         }
     }
-    @objc private func deletePhoto(_ sender: UIButton) {
-        let index = sender.tag
-        images.remove(at: index)
-        photosCollection.reloadData()
+
+    // MARK: - UIPickerViewDataSource
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
     }
-    func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
         if pickerView == categoryPicker {
             return categories.count
@@ -368,6 +365,8 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
         return 0
     }
+
+    // MARK: - UIPickerViewDelegate
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
         if pickerView == categoryPicker {
             return categories[row]
@@ -376,6 +375,7 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
         return nil
     }
+
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         if pickerView == categoryPicker {
             categoryField.text = categories[row]
@@ -416,6 +416,20 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             return headerView
         }
         return UICollectionReusableView()
+    }
+
+    // MARK: - UITextViewDelegate
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView == descView && textView.text == "Description" {
+            textView.text = ""
+            textView.textColor = .label
+        }
+    }
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if textView == descView && textView.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            textView.text = "Description"
+            textView.textColor = .secondaryLabel
+        }
     }
 }
 

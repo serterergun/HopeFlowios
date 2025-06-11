@@ -71,6 +71,29 @@ class ProductCell: UICollectionViewCell {
         return button
     }()
     
+    let distanceLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        label.textColor = .white
+        label.backgroundColor = .systemPurple
+        label.layer.cornerRadius = 10
+        label.layer.masksToBounds = true
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    let distanceIconView: UIImageView = {
+        let iv = UIImageView()
+        iv.image = UIImage(systemName: "mappin.and.ellipse")
+        iv.tintColor = .white
+        iv.backgroundColor = .systemPurple
+        iv.layer.cornerRadius = 10
+        iv.layer.masksToBounds = true
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
+    }()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -89,6 +112,8 @@ class ProductCell: UICollectionViewCell {
         contentView.addSubview(priceLabel)
         contentView.addSubview(locationLabel)
         contentView.addSubview(favoriteButton)
+        productImageView.addSubview(distanceIconView)
+        productImageView.addSubview(distanceLabel)
         
         NSLayoutConstraint.activate([
             productImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -121,11 +146,21 @@ class ProductCell: UICollectionViewCell {
             favoriteButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             favoriteButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
             favoriteButton.widthAnchor.constraint(equalToConstant: 24),
-            favoriteButton.heightAnchor.constraint(equalToConstant: 24)
+            favoriteButton.heightAnchor.constraint(equalToConstant: 24),
+            
+            distanceIconView.trailingAnchor.constraint(equalTo: distanceLabel.leadingAnchor, constant: -4),
+            distanceIconView.centerYAnchor.constraint(equalTo: distanceLabel.centerYAnchor),
+            distanceIconView.widthAnchor.constraint(equalToConstant: 20),
+            distanceIconView.heightAnchor.constraint(equalToConstant: 20),
+            
+            distanceLabel.trailingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: -8),
+            distanceLabel.bottomAnchor.constraint(equalTo: productImageView.bottomAnchor, constant: -8),
+            distanceLabel.heightAnchor.constraint(equalToConstant: 20),
+            distanceLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 48)
         ])
     }
     
-    func configure(with product: Product, ownerName: String? = nil, favoriteAction: (() -> Void)? = nil) {
+    func configure(with product: Product, ownerName: String? = nil, favoriteAction: (() -> Void)? = nil, distanceString: String? = nil) {
         titleLabel.text = product.title
         descriptionLabel.text = product.description
         priceLabel.text = "£\(product.givenPriceAsDouble ?? 0)"
@@ -160,5 +195,14 @@ class ProductCell: UICollectionViewCell {
         favoriteButton.addAction(UIAction { _ in
             favoriteAction?()
         }, for: .touchUpInside)
+        
+        if let distanceString = distanceString {
+            distanceLabel.text = distanceString
+            distanceLabel.isHidden = false
+            distanceIconView.isHidden = false
+        } else {
+            distanceLabel.isHidden = true
+            distanceIconView.isHidden = true
+        }
     }
 } 

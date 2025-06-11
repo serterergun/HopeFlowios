@@ -8,7 +8,6 @@
 import UIKit
 import CoreLocation
 
-// Kategori id -> isim eşlemesi
 let categoryNames: [Int: String] = [
     1: "Books",
     2: "Clothes",
@@ -17,37 +16,32 @@ let categoryNames: [Int: String] = [
     5: "Electronics"
 ]
 
-private struct UserName: Codable {
-    let id: Int?
-    let first_name: String?
-    let last_name: String?
-}
-
-class ViewController: UIViewController {
+class ViewController: UIViewController, CLLocationManagerDelegate {
     private var products: [Product] = []
     private var groupedProducts: [String: [Product]] = [:]
     private var selectedRange: String = "5km"
     private var selectedAddress: String = ""
     private let locationManager = CLLocationManager()
     private var userLocation: CLLocation?
-    private let sampleListingIDs = ["1", "2", "3", "4"] // örnek ID'ler, backend'den gerçek ID'ler ile değiştirilebilir
-    private var userCache: [Int: (firstName: String, lastName: String)] = [:]
+    private let sampleListingIDs = ["1", "2", "3", "4"]
 
-    private let collectionView: UICollectionView = {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-        layout.sectionInset = UIEdgeInsets(top: 4, left: 16, bottom: 80, right: 16)
-        layout.minimumLineSpacing = 16
-        layout.minimumInteritemSpacing = 8
+    private lazy var collectionView: UICollectionView = {
+        let layout = createCompositionalLayout()
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .systemBackground
+        cv.delegate = self
+        cv.dataSource = self
+        cv.register(ProductCell.self, forCellWithReuseIdentifier: "ProductCell")
+        cv.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
         return cv
     }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
         setupCollectionView()
-        self.title = nil
         fetchProducts()
     }
 
@@ -65,10 +59,6 @@ class ViewController: UIViewController {
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        collectionView.delegate = self
-        collectionView.dataSource = self
-        collectionView.register(ProductCell.self, forCellWithReuseIdentifier: "ProductCell")
-        collectionView.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
     }
 
     private func fetchProducts() {
@@ -77,7 +67,6 @@ class ViewController: UIViewController {
                 let products = try await NetworkManager.shared.fetchAllListings()
                 self.products = products
                 self.groupProductsByCategory()
-                self.fetchAllUsers(for: products)
                 DispatchQueue.main.async {
                     self.collectionView.reloadData()
                 }
@@ -93,26 +82,39 @@ class ViewController: UIViewController {
         }
     }
 
-    private func fetchAllUsers(for products: [Product]) {
-        let userIds = Set(products.compactMap { $0.user_id })
-        for userId in userIds {
-            if userCache[userId] == nil {
-                fetchUser(userId: userId)
-            }
+    private func createCompositionalLayout() -> UICollectionViewLayout {
+        return UICollectionViewCompositionalLayout { sectionIndex, _ in
+            // Item
+            let itemSize = NSCollectionLayoutSize(widthDimension: .absolute(200), heightDimension: .estimated(260))
+            let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+            // Group
+            let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .estimated(260))
+            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+            group.interItemSpacing = .fixed(26)
+
+            // Section
+            let section = NSCollectionLayoutSection(group: group)
+            section.orthogonalScrollingBehavior = .continuous
+            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 32, trailing: 16)
+            section.interGroupSpacing = 12
+
+            // Header
+            let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(40))
+            let sectionHeader = NSCollectionLayoutBoundarySupplementaryItem(
+                layoutSize: headerSize,
+                elementKind: UICollectionView.elementKindSectionHeader,
+                alignment: .topLeading
+            )
+            section.boundarySupplementaryItems = [sectionHeader]
+
+            return section
         }
     }
 
-    private func fetchUser(userId: Int) {
-        guard let url = URL(string: "http://localhost:8000/api/v1/users/\(userId)") else { return }
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self, let data = data, error == nil else { return }
-            if let user = try? JSONDecoder().decode(UserName.self, from: data) {
-                DispatchQueue.main.async {
-                    self.userCache[userId] = (user.first_name ?? "", user.last_name ?? "")
-                    self.collectionView.reloadData()
-                }
-            }
-        }.resume()
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        userLocation = locations.last
+        collectionView.reloadData()
     }
 
     func showRangePicker() {
@@ -125,52 +127,70 @@ class ViewController: UIViewController {
             }))
         }
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = self.collectionView
-            popover.sourceRect = CGRect(x: self.collectionView.bounds.midX, y: 0, width: 0, height: 0)
-            popover.permittedArrowDirections = .up
-        }
         self.present(alert, animated: true)
     }
 
-    // ViewController'da showLocationPicker fonksiyonu ekle:
     func showLocationPicker() {
         let picker = LocationPickerViewController()
         picker.delegate = self
         picker.modalPresentationStyle = .fullScreen
         present(picker, animated: true)
     }
+
+    @objc func addProductButtonTapped() {
+        if !AuthManager.shared.isLoggedIn {
+            let loginVC = LoginViewController()
+            loginVC.modalPresentationStyle = .fullScreen
+            present(loginVC, animated: true)
+            return
+        }
+    }
+
+    @objc func purchaseButtonTapped() {
+        if !AuthManager.shared.isLoggedIn {
+            let loginVC = LoginViewController()
+            loginVC.modalPresentationStyle = .fullScreen
+            present(loginVC, animated: true)
+            return
+        }
+    }
 }
 
-extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+// MARK: - Collection View Delegate/DataSource
+
+extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func numberOfSections(in collectionView: UICollectionView) -> Int {
         return groupedProducts.keys.count
     }
+
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         let category = Array(groupedProducts.keys)[section]
         return groupedProducts[category]?.count ?? 0
     }
+
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProductCell", for: indexPath) as! ProductCell
         let category = Array(groupedProducts.keys)[indexPath.section]
         if let product = groupedProducts[category]?[indexPath.item] {
             var ownerName: String? = nil
-            if let userId = product.user_id, let user = userCache[userId] {
-                ownerName = "\(user.firstName) \(user.lastName)"
+            if let userInfo = product.user_info {
+                ownerName = "\(userInfo.first_name ?? "") \(userInfo.last_name_initial ?? "")"
             }
-            cell.configure(with: product, ownerName: ownerName)
+            var distanceString: String? = nil
+            if let userLoc = userLocation, let lat = product.latitude, let lon = product.longitude {
+                let productLoc = CLLocation(latitude: lat, longitude: lon)
+                let distance = userLoc.distance(from: productLoc)
+                distanceString = distance < 1000
+                    ? String(format: "%.0f m", distance)
+                    : String(format: "%.1f km", distance / 1000)
+            } else {
+                distanceString = "0 mi"
+            }
+            cell.configure(with: product, ownerName: ownerName, distanceString: distanceString)
         }
         return cell
     }
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let padding: CGFloat = 16 * 2 + 8 // left + right + aradaki spacing
-        let availableWidth = collectionView.frame.width - padding
-        let width = availableWidth / 2
-        return CGSize(width: width, height: 220)
-    }
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-        return UIEdgeInsets(top: 4, left: 16, bottom: 80, right: 16)
-    }
+
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         if kind == UICollectionView.elementKindSectionHeader {
             let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "CategoryHeader", for: indexPath) as! CategoryHeaderView
@@ -180,9 +200,7 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource, 
         }
         return UICollectionReusableView()
     }
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
-        return CGSize(width: collectionView.frame.width, height: 56)
-    }
+
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let category = Array(groupedProducts.keys)[indexPath.section]
         if let product = groupedProducts[category]?[indexPath.item] {
@@ -198,7 +216,8 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource, 
     }
 }
 
-// ViewController'da LocationPickerDelegate protokolünü uygula:
+// MARK: - Location Picker Delegate
+
 extension ViewController: LocationPickerDelegate {
     func locationPicker(didSelect location: CLLocationCoordinate2D, range: Double, address: String) {
         self.selectedRange = String(format: "%.1f mi", range)
@@ -206,4 +225,3 @@ extension ViewController: LocationPickerDelegate {
         self.collectionView.reloadSections(IndexSet(integer: 0))
     }
 }
-

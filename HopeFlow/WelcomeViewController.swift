@@ -70,8 +70,7 @@ class WelcomeViewController: UIViewController {
             // Tab bar controller'ı tekrar oluştur
             let homeVC = UINavigationController(rootViewController: ViewController())
             homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
-            let donationsVC = UIViewController()
-            donationsVC.view.backgroundColor = .systemBackground
+            let donationsVC = DonationsViewController()
             donationsVC.tabBarItem = UITabBarItem(title: "Donations", image: UIImage(systemName: "gift.fill"), tag: 1)
             let beHopeVC = BeHopeViewController()
             beHopeVC.tabBarItem = UITabBarItem(title: "Be the Hope", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
@@ -265,11 +264,24 @@ class AccountViewController: UIViewController, UITableViewDataSource, UITableVie
         alert.addAction(UIAlertAction(title: "Log Out", style: .destructive) { _ in
             AuthManager.shared.logout()
             self.updateUI()
-            // WelcomeViewController'a yönlendir
+            // Home ekranına yönlendir
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let sceneDelegate = windowScene.delegate as? SceneDelegate,
                let window = sceneDelegate.window {
-                window.rootViewController = WelcomeViewController()
+                let homeVC = UINavigationController(rootViewController: ViewController())
+                homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
+                let donationsVC = DonationsViewController()
+                donationsVC.tabBarItem = UITabBarItem(title: "Donations", image: UIImage(systemName: "gift.fill"), tag: 1)
+                let beHopeVC = BeHopeViewController()
+                beHopeVC.tabBarItem = UITabBarItem(title: "Be the Hope", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
+                let myImpactVC = MyImpactViewController()
+                myImpactVC.tabBarItem = UITabBarItem(title: "My Impact", image: UIImage(systemName: "chart.bar.xaxis"), tag: 3)
+                let accountVC = UINavigationController(rootViewController: AccountViewController())
+                accountVC.tabBarItem = UITabBarItem(title: "Account", image: UIImage(systemName: "person.crop.circle"), tag: 4)
+                let tabBarController = CustomTabBarController()
+                tabBarController.viewControllers = [homeVC, donationsVC, beHopeVC, myImpactVC, accountVC]
+                tabBarController.selectedIndex = 0 // Home sekmesi seçili
+                window.rootViewController = tabBarController
                 window.makeKeyAndVisible()
             }
         })
