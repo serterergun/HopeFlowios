@@ -17,7 +17,7 @@ class DonationsViewController: UIViewController, UICollectionViewDataSource, UIC
         layout.scrollDirection = .vertical
         layout.sectionInset = UIEdgeInsets(top: 4, left: 16, bottom: 80, right: 16)
         layout.minimumLineSpacing = 16
-        layout.minimumInteritemSpacing = 8
+        layout.minimumInteritemSpacing = 16
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .systemBackground
         return cv
@@ -80,7 +80,6 @@ class DonationsViewController: UIViewController, UICollectionViewDataSource, UIC
         collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(ProductCell.self, forCellWithReuseIdentifier: "ProductCell")
-        collectionView.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
     }
 
     private func setupEmptyLabel() {
@@ -167,40 +166,41 @@ class DonationsViewController: UIViewController, UICollectionViewDataSource, UIC
     }
 
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return groupedProducts.keys.count
+        return 1
     }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        let category = Array(groupedProducts.keys)[section]
-        return groupedProducts[category]?.count ?? 0
+        return products.count
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProductCell", for: indexPath) as! ProductCell
-        let category = Array(groupedProducts.keys)[indexPath.section]
-        if let product = groupedProducts[category]?[indexPath.item] {
-            var ownerName: String? = nil
-            if let userInfo = product.user_info {
-                ownerName = "\(userInfo.first_name ?? "") \(userInfo.last_name_initial ?? "")"
-            }
-            cell.configure(with: product, ownerName: ownerName)
+        let product = products[indexPath.item]
+        var ownerName: String? = nil
+        if let userInfo = product.user_info {
+            ownerName = "\(userInfo.first_name ?? "") \(userInfo.last_name_initial ?? "")"
         }
+        cell.configure(with: product, ownerName: ownerName)
         return cell
     }
 
-    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        if kind == UICollectionView.elementKindSectionHeader {
-            let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "CategoryHeader", for: indexPath) as! CategoryHeaderView
-            let category = Array(groupedProducts.keys)[indexPath.section]
-            headerView.titleLabel.text = category
-            return headerView
-        }
-        return UICollectionReusableView()
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let padding: CGFloat = 16 * 3 // 16 left + 16 right + 16 aradaki spacing
+        let availableWidth = collectionView.frame.width - padding
+        let width = availableWidth / 2
+        return CGSize(width: width, height: 280) // Sabit yükseklik
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let width = (collectionView.bounds.width - 40) / 2
-        return CGSize(width: width, height: 200)
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
+        return UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+    }
+
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
+        return 16
+    }
+
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+        return 16
     }
 
     deinit {
