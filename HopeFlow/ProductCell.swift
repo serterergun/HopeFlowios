@@ -4,7 +4,7 @@ class ProductCell: UICollectionViewCell {
     let titleLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.boldSystemFont(ofSize: 16)
-        label.textColor = .label
+        label.textColor = .homePrimary
         label.numberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -13,7 +13,7 @@ class ProductCell: UICollectionViewCell {
     let descriptionLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .homeSecondary
         label.numberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -22,7 +22,7 @@ class ProductCell: UICollectionViewCell {
     let priceLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.boldSystemFont(ofSize: 16)
-        label.textColor = .systemPurple
+        label.textColor = .homeAccent
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -30,7 +30,7 @@ class ProductCell: UICollectionViewCell {
     let locationLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 12)
-        label.textColor = .secondaryLabel
+        label.textColor = .homeSecondary
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -40,7 +40,7 @@ class ProductCell: UICollectionViewCell {
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.layer.cornerRadius = 16
-        iv.backgroundColor = UIColor.systemGray3
+        iv.backgroundColor = UIColor.homeAccent
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
@@ -48,7 +48,7 @@ class ProductCell: UICollectionViewCell {
     let ownerNameLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        label.textColor = .label
+        label.textColor = .homeSecondary
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -59,6 +59,7 @@ class ProductCell: UICollectionViewCell {
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.backgroundColor = UIColor.homeCardBackground
         return imageView
     }()
     
@@ -66,7 +67,7 @@ class ProductCell: UICollectionViewCell {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "heart"), for: .normal)
         button.setImage(UIImage(systemName: "heart.fill"), for: .selected)
-        button.tintColor = .systemPurple
+        button.tintColor = .homeAccent
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -75,7 +76,7 @@ class ProductCell: UICollectionViewCell {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 12, weight: .bold)
         label.textColor = .white
-        label.backgroundColor = .systemPurple
+        label.backgroundColor = .homeAccent
         label.layer.cornerRadius = 10
         label.layer.masksToBounds = true
         label.textAlignment = .center
@@ -87,7 +88,7 @@ class ProductCell: UICollectionViewCell {
         let iv = UIImageView()
         iv.image = UIImage(systemName: "mappin.and.ellipse")
         iv.tintColor = .white
-        iv.backgroundColor = .systemPurple
+        iv.backgroundColor = .homeAccent
         iv.layer.cornerRadius = 10
         iv.layer.masksToBounds = true
         iv.translatesAutoresizingMaskIntoConstraints = false
@@ -170,13 +171,13 @@ class ProductCell: UICollectionViewCell {
         } else {
             ownerNameLabel.text = ""
         }
-        ownerNameLabel.textColor = .label
+        ownerNameLabel.textColor = .homeSecondary
         ownerNameLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
         ownerNameLabel.isHidden = false
         favoriteButton.isSelected = product.isFavorite ?? false
         
         productImageView.image = nil
-        productImageView.backgroundColor = UIColor.systemGray4
+        productImageView.backgroundColor = UIColor.homeCardBackground
         if let imageUrl = product.image_url, let url = URL(string: imageUrl) {
             URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
                 if let data = data, let image = UIImage(data: data) {
@@ -190,7 +191,7 @@ class ProductCell: UICollectionViewCell {
         
         profileImageView.image = UIImage(systemName: "person.crop.circle.fill")
         profileImageView.tintColor = .white
-        profileImageView.backgroundColor = UIColor.systemGray3
+        profileImageView.backgroundColor = UIColor.homeAccent
         
         favoriteButton.addAction(UIAction { _ in
             favoriteAction?()

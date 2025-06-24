@@ -9,6 +9,11 @@ enum NetworkError: Error {
     case decodingError
 }
 
+struct Charity: Codable {
+    let id: Int
+    let name: String
+}
+
 class NetworkManager {
     static let shared = NetworkManager()
     private let baseURL = "http://localhost:8000" // Local FastAPI backend for development
@@ -178,7 +183,7 @@ class NetworkManager {
         }
     }
     
-    func createListing(title: String, description: String, categoryId: Int, userId: Int, originalPrice: Double, usageDuration: Int, suggestedPrice: Double, givenPrice: Double, postCode: String) async throws -> Product {
+    func createListing(title: String, description: String, categoryId: Int, userId: Int, postCode: String) async throws -> Product {
         guard let url = URL(string: "\(baseURL)/api/v1/listings") else {
             throw NetworkError.invalidURL
         }
@@ -187,10 +192,6 @@ class NetworkManager {
             "description": description,
             "category_id": categoryId,
             "user_id": userId,
-            "original_price": originalPrice,
-            "usage_duration": usageDuration,
-            "suggested_price": suggestedPrice,
-            "given_price": givenPrice,
             "post_code": postCode
         ]
         var request = URLRequest(url: url)
@@ -364,5 +365,18 @@ class NetworkManager {
             throw NetworkError.invalidResponse
         }
         return try JSONDecoder().decode([Product].self, from: data)
+    }
+
+    func fetchCharities() async throws -> [Charity] {
+        guard let url = URL(string: "\(baseURL)/api/v1/charities/") else {
+            throw NetworkError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode([Charity].self, from: data)
     }
 } 

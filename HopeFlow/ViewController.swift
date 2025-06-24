@@ -18,12 +18,20 @@ let categoryNames: [Int: String] = [
 
 class ViewController: UIViewController, CLLocationManagerDelegate {
     private var products: [Product] = []
+    private var filteredProducts: [Product] = []
     private var groupedProducts: [String: [Product]] = [:]
     private var selectedRange: String = "5km"
     private var selectedAddress: String = ""
     private let locationManager = CLLocationManager()
     private var userLocation: CLLocation?
     private let sampleListingIDs = ["1", "2", "3", "4"]
+
+    private let searchBar: UISearchBar = {
+        let sb = UISearchBar()
+        sb.placeholder = "Search products..."
+        sb.translatesAutoresizingMaskIntoConstraints = false
+        return sb
+    }()
 
     private lazy var collectionView: UICollectionView = {
         let layout = createCompositionalLayout()
@@ -38,9 +46,11 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.backgroundColor = .homeBackground
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
+        setupSearchBar()
         setupCollectionView()
         fetchProducts()
     }
@@ -50,15 +60,33 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         fetchProducts()
     }
 
+    private func setupSearchBar() {
+        view.addSubview(searchBar)
+        searchBar.delegate = self
+        searchBar.barTintColor = .homeBackground
+        searchBar.backgroundColor = .homeBackground
+        searchBar.searchTextField.backgroundColor = .homeCardBackground
+        searchBar.searchTextField.textColor = .homePrimary
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+
     private func setupCollectionView() {
         view.addSubview(collectionView)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        collectionView.delegate = self
+        collectionView.dataSource = self
+        collectionView.register(ProductCell.self, forCellWithReuseIdentifier: "ProductCell")
+        collectionView.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
     }
 
     private func fetchProducts() {
@@ -66,6 +94,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
             do {
                 let products = try await NetworkManager.shared.fetchAllListings()
                 self.products = products
+                self.filteredProducts = products
                 self.groupProductsByCategory()
                 DispatchQueue.main.async {
                     self.collectionView.reloadData()
@@ -77,7 +106,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     private func groupProductsByCategory() {
-        groupedProducts = Dictionary(grouping: products) { product in
+        groupedProducts = Dictionary(grouping: filteredProducts) { product in
             categoryNames[product.category_id ?? 0] ?? "Uncategorized"
         }
     }
@@ -223,5 +252,27 @@ extension ViewController: LocationPickerDelegate {
         self.selectedRange = String(format: "%.1f mi", range)
         self.selectedAddress = address.isEmpty ? "Current Location" : address
         self.collectionView.reloadSections(IndexSet(integer: 0))
+    }
+}
+
+// MARK: - UISearchBarDelegate
+
+extension ViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            filteredProducts = products
+        } else {
+            filteredProducts = products.filter { product in
+                let title = product.title?.lowercased() ?? ""
+                let desc = product.description?.lowercased() ?? ""
+                return title.contains(searchText.lowercased()) || desc.contains(searchText.lowercased())
+            }
+        }
+        groupProductsByCategory()
+        collectionView.reloadData()
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
     }
 }

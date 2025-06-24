@@ -1,12 +1,15 @@
 import UIKit
 
 class LoginViewController: UIViewController {
+    public var onRegisterTapped: (() -> Void)?
+    
     private let emailField: UITextField = {
         let field = UITextField()
         field.placeholder = "Email"
         field.borderStyle = .roundedRect
         field.autocapitalizationType = .none
         field.keyboardType = .emailAddress
+        field.textContentType = .emailAddress
         field.translatesAutoresizingMaskIntoConstraints = false
         return field
     }()
@@ -16,6 +19,8 @@ class LoginViewController: UIViewController {
         field.placeholder = "Password"
         field.borderStyle = .roundedRect
         field.isSecureTextEntry = true
+        field.keyboardType = .asciiCapable
+        field.textContentType = .password
         field.translatesAutoresizingMaskIntoConstraints = false
         return field
     }()
@@ -43,6 +48,14 @@ class LoginViewController: UIViewController {
         view.backgroundColor = .systemBackground
         setupUI()
         setupActions()
+        emailField.autocapitalizationType = .none
+        emailField.autocorrectionType = .no
+        emailField.keyboardType = .emailAddress
+        emailField.textContentType = .emailAddress
+        passwordField.autocapitalizationType = .none
+        passwordField.autocorrectionType = .no
+        passwordField.keyboardType = .asciiCapable
+        passwordField.textContentType = .password
     }
     
     private func setupUI() {
@@ -107,6 +120,10 @@ class LoginViewController: UIViewController {
     }
     
     @objc private func registerTapped() {
+        if let onRegisterTapped = onRegisterTapped {
+            onRegisterTapped()
+            return
+        }
         let registerVC = RegisterViewController()
         registerVC.modalPresentationStyle = .fullScreen
         present(registerVC, animated: true)

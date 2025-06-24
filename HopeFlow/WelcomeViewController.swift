@@ -70,16 +70,16 @@ class WelcomeViewController: UIViewController {
             // Tab bar controller'ı tekrar oluştur
             let homeVC = UINavigationController(rootViewController: ViewController())
             homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
-            let donationsVC = DonationsViewController()
-            donationsVC.tabBarItem = UITabBarItem(title: "Donations", image: UIImage(systemName: "gift.fill"), tag: 1)
-            let beHopeVC = BeHopeViewController()
-            beHopeVC.tabBarItem = UITabBarItem(title: "Be the Hope", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
-            let myImpactVC = MyImpactViewController()
-            myImpactVC.tabBarItem = UITabBarItem(title: "My Impact", image: UIImage(systemName: "chart.bar.xaxis"), tag: 3)
+            let donationsVC = ImpactViewController()
+            donationsVC.tabBarItem = UITabBarItem(title: "Impact", image: UIImage(systemName: "gift.fill"), tag: 1)
+            let beHopeVC = DonateViewController()
+            beHopeVC.tabBarItem = UITabBarItem(title: "Donate", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
+            let messagesVC = MessagesViewController()
+            messagesVC.tabBarItem = UITabBarItem(title: "Messages", image: UIImage(systemName: "bubble.left.and.bubble.right.fill"), tag: 3)
             let accountVC = UINavigationController(rootViewController: AccountViewController())
             accountVC.tabBarItem = UITabBarItem(title: "Account", image: UIImage(systemName: "person.crop.circle"), tag: 4)
             let tabBarController = CustomTabBarController()
-            tabBarController.viewControllers = [homeVC, donationsVC, beHopeVC, myImpactVC, accountVC]
+            tabBarController.viewControllers = [homeVC, donationsVC, beHopeVC, messagesVC, accountVC]
             window.rootViewController = tabBarController
             window.makeKeyAndVisible()
         }
@@ -87,12 +87,98 @@ class WelcomeViewController: UIViewController {
 }
 
 class CustomTabBarController: UITabBarController, UITabBarControllerDelegate {
+    private let indicatorHeight: CGFloat = 2
+    private let customTabBarHeight: CGFloat = 83
+    private let indicator = UIView()
     override func viewDidLoad() {
         super.viewDidLoad()
         self.delegate = self
+        tabBar.isTranslucent = false
+        tabBar.backgroundColor = .systemBackground
+        updateTabBarColors(selectedIndex: selectedIndex)
+        indicator.backgroundColor = UIColor.homePrimary
+        indicator.layer.cornerRadius = indicatorHeight / 2
+        indicator.layer.masksToBounds = true
+        tabBar.addSubview(indicator)
+    }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Tab bar yüksekliğini artır
+        var tabFrame = tabBar.frame
+        let diff = customTabBarHeight - tabFrame.height
+        if abs(diff) > 1 {
+            tabFrame.size.height = customTabBarHeight
+            tabFrame.origin.y = view.frame.size.height - customTabBarHeight
+            tabBar.frame = tabFrame
+        }
+        updateIndicator(animated: false)
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        updateIndicator(animated: false)
     }
     func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
-        return true // push veya present yok, doğrudan sekme değişsin
+        return true
+    }
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        updateIndicator(animated: true)
+    }
+    private func updateTabBarColors(selectedIndex: Int) {
+        switch selectedIndex {
+        case 0:
+            tabBar.tintColor = .homePrimary
+            tabBar.unselectedItemTintColor = .secondaryColor
+        case 1:
+            tabBar.tintColor = .impactPrimary
+            tabBar.unselectedItemTintColor = .secondaryColor
+        default:
+            tabBar.tintColor = .systemBlue
+            tabBar.unselectedItemTintColor = .secondaryColor
+        }
+    }
+    private func updateIndicator(animated: Bool) {
+        guard let items = tabBar.items, items.count > 0 else { return }
+        let tabBarButtons = tabBar.subviews.filter { $0.isUserInteractionEnabled && $0 is UIControl }
+        guard selectedIndex < tabBarButtons.count else { return }
+        let sortedButtons = tabBarButtons.sorted { $0.frame.minX < $1.frame.minX }
+        let selectedButton = sortedButtons[selectedIndex]
+        let indicatorHeight = self.indicatorHeight
+        let indicatorY: CGFloat = 0 // Tab bar'ın üst kenarıyla aynı hizada
+        var indicatorX: CGFloat
+        var indicatorWidth: CGFloat
+        if selectedIndex == 0 {
+            // İlk tab: çizgi sol kenardan başlasın, ikonun ortasına kadar uzasın
+            indicatorX = 0
+            indicatorWidth = selectedButton.frame.maxX
+        } else if selectedIndex == sortedButtons.count - 1 {
+            // Son tab: çizgi ikonun başından başlasın, sağ kenara kadar uzasın
+            indicatorX = selectedButton.frame.minX
+            indicatorWidth = tabBar.bounds.width - selectedButton.frame.minX
+        } else {
+            // Ortadakiler: ikonun ortasında, dar çizgi
+            indicatorWidth = selectedButton.frame.width * 0.6
+            indicatorX = selectedButton.frame.midX - indicatorWidth / 2
+        }
+        let indicatorFrame = CGRect(x: indicatorX, y: indicatorY, width: indicatorWidth, height: indicatorHeight)
+        if animated {
+            UIView.animate(withDuration: 0.25) {
+                self.indicator.frame = indicatorFrame
+            }
+        } else {
+            self.indicator.frame = indicatorFrame
+        }
+        // Change indicator color based on selected tab
+        if selectedIndex == 0 {
+            self.indicator.backgroundColor = .homePrimary
+        } else if selectedIndex == 1 {
+            self.indicator.backgroundColor = .impactPrimary
+        } else {
+            self.indicator.backgroundColor = .systemBlue
+        }
+        updateTabBarColors(selectedIndex: selectedIndex)
+    }
+    override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        updateIndicator(animated: true)
     }
 }
 
@@ -104,226 +190,6 @@ class UserManager {
     func logout() {
         name = nil
         email = nil
-    }
-}
-
-// Account sekmesi için yeni bir ViewController
-class AccountViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-    let tableView = UITableView(frame: .zero, style: .insetGrouped)
-    let items: [(title: String, icon: String, color: UIColor)] = [
-        ("Notification Settings", "bell.badge", .systemOrange),
-        ("My Watchlist", "star.fill", .systemYellow),
-        ("Profile", "person.crop.circle.fill", .systemBlue),
-        ("Account Settings", "gearshape.fill", .systemGray)
-    ]
-    let profileView = UIView()
-    let profileImageView = UIImageView()
-    let nameLabel = UILabel()
-    let emailLabel = UILabel()
-    let logoutButton = UIButton(type: .system)
-    let loginButton = UIButton(type: .system)
-    let registerButton = UIButton(type: .system)
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        title = "Account"
-        view.backgroundColor = .systemGroupedBackground
-        setupProfileView()
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.tableHeaderView = profileView
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.backgroundColor = .clear
-        view.addSubview(tableView)
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-        setupLogoutButton()
-        setupAuthButtons()
-        updateUI()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        updateUI()
-    }
-    
-    func setupProfileView() {
-        let width = UIScreen.main.bounds.width
-        let container = UIView()
-        container.backgroundColor = .clear
-
-        // Profil resmi
-        let imageView = UIImageView(image: UIImage(systemName: "person.crop.circle.fill"))
-        imageView.tintColor = .systemGray3
-        imageView.contentMode = .scaleAspectFill
-        imageView.layer.cornerRadius = 36
-        imageView.clipsToBounds = true
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-        // Ad
-        nameLabel.font = UIFont.systemFont(ofSize: 20, weight: .semibold)
-        nameLabel.textAlignment = .center
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // E-posta
-        emailLabel.font = UIFont.systemFont(ofSize: 15, weight: .regular)
-        emailLabel.textColor = .secondaryLabel
-        emailLabel.textAlignment = .center
-        emailLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        container.addSubview(imageView)
-        container.addSubview(nameLabel)
-        container.addSubview(emailLabel)
-
-        NSLayoutConstraint.activate([
-            imageView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            imageView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            imageView.widthAnchor.constraint(equalToConstant: 72),
-            imageView.heightAnchor.constraint(equalToConstant: 72),
-            nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 8),
-            nameLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            emailLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-            emailLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            emailLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16)
-        ])
-
-        // Yüksekliği Auto Layout ile belirle
-        let targetSize = CGSize(width: width, height: UIView.layoutFittingCompressedSize.height)
-        let height = container.systemLayoutSizeFitting(targetSize).height
-        container.frame = CGRect(x: 0, y: 0, width: width, height: height)
-
-        tableView.tableHeaderView = container
-    }
-    
-    func setupLogoutButton() {
-        logoutButton.setTitle("Log Out", for: .normal)
-        logoutButton.setTitleColor(.systemRed, for: .normal)
-        logoutButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        logoutButton.backgroundColor = .clear
-        logoutButton.translatesAutoresizingMaskIntoConstraints = false
-        logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
-        view.addSubview(logoutButton)
-        NSLayoutConstraint.activate([
-            logoutButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            logoutButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            logoutButton.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        tableView.contentInset.bottom = 60
-    }
-    
-    func setupAuthButtons() {
-        loginButton.setTitle("Login", for: .normal)
-        loginButton.setTitleColor(.systemBlue, for: .normal)
-        loginButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        loginButton.translatesAutoresizingMaskIntoConstraints = false
-        loginButton.addTarget(self, action: #selector(loginTapped), for: .touchUpInside)
-        view.addSubview(loginButton)
-        NSLayoutConstraint.activate([
-            loginButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -70),
-            loginButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loginButton.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        registerButton.setTitle("Register", for: .normal)
-        registerButton.setTitleColor(.systemGreen, for: .normal)
-        registerButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        registerButton.translatesAutoresizingMaskIntoConstraints = false
-        registerButton.addTarget(self, action: #selector(registerTapped), for: .touchUpInside)
-        view.addSubview(registerButton)
-        NSLayoutConstraint.activate([
-            registerButton.bottomAnchor.constraint(equalTo: loginButton.topAnchor, constant: -8),
-            registerButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            registerButton.heightAnchor.constraint(equalToConstant: 44)
-        ])
-    }
-    
-    func updateUI() {
-        if AuthManager.shared.isAuthenticated, let user = AuthManager.shared.currentUser {
-            nameLabel.text = "\(user.firstName ?? "") \(user.lastName ?? "")"
-            emailLabel.text = user.email ?? ""
-            profileImageView.isHidden = false
-            logoutButton.isHidden = false
-            loginButton.isHidden = true
-            registerButton.isHidden = true
-        } else {
-            nameLabel.text = ""
-            emailLabel.text = ""
-            profileImageView.isHidden = true
-            logoutButton.isHidden = true
-            loginButton.isHidden = false
-            registerButton.isHidden = false
-        }
-    }
-    
-    @objc func logoutTapped() {
-        let alert = UIAlertController(title: "Log Out", message: "Are you sure you want to log out?", preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Log Out", style: .destructive) { _ in
-            AuthManager.shared.logout()
-            self.updateUI()
-            // Home ekranına yönlendir
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let sceneDelegate = windowScene.delegate as? SceneDelegate,
-               let window = sceneDelegate.window {
-                let homeVC = UINavigationController(rootViewController: ViewController())
-                homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
-                let donationsVC = DonationsViewController()
-                donationsVC.tabBarItem = UITabBarItem(title: "Donations", image: UIImage(systemName: "gift.fill"), tag: 1)
-                let beHopeVC = BeHopeViewController()
-                beHopeVC.tabBarItem = UITabBarItem(title: "Be the Hope", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
-                let myImpactVC = MyImpactViewController()
-                myImpactVC.tabBarItem = UITabBarItem(title: "My Impact", image: UIImage(systemName: "chart.bar.xaxis"), tag: 3)
-                let accountVC = UINavigationController(rootViewController: AccountViewController())
-                accountVC.tabBarItem = UITabBarItem(title: "Account", image: UIImage(systemName: "person.crop.circle"), tag: 4)
-                let tabBarController = CustomTabBarController()
-                tabBarController.viewControllers = [homeVC, donationsVC, beHopeVC, myImpactVC, accountVC]
-                tabBarController.selectedIndex = 0 // Home sekmesi seçili
-                window.rootViewController = tabBarController
-                window.makeKeyAndVisible()
-            }
-        })
-        present(alert, animated: true)
-    }
-    
-    @objc func loginTapped() {
-        let loginVC = LoginViewController()
-        loginVC.modalPresentationStyle = .fullScreen
-        present(loginVC, animated: true)
-    }
-    
-    @objc func registerTapped() {
-        let registerVC = RegisterViewController()
-        registerVC.modalPresentationStyle = .fullScreen
-        present(registerVC, animated: true)
-    }
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { items.count }
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
-        let item = items[indexPath.row]
-        cell.textLabel?.text = item.title
-        cell.textLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
-        cell.imageView?.image = UIImage(systemName: item.icon)
-        cell.imageView?.tintColor = item.color
-        cell.accessoryType = .disclosureIndicator
-        cell.backgroundColor = .secondarySystemGroupedBackground
-        return cell
-    }
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let item = items[indexPath.row]
-        if item.title == "Notification Settings" {
-            let vc = NotificationSettingsViewController()
-            navigationController?.pushViewController(vc, animated: true)
-        } else {
-            let vc = UIViewController()
-            vc.view.backgroundColor = .systemBackground
-            vc.title = item.title
-            navigationController?.pushViewController(vc, animated: true)
-        }
     }
 }
 

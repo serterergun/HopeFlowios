@@ -1,13 +1,11 @@
 import UIKit
 import CoreLocation
 
-class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIPickerViewDataSource, UIPickerViewDelegate, UITextViewDelegate {
+class DonateViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIPickerViewDataSource, UIPickerViewDelegate, UITextViewDelegate {
     // UI
     private var images: [UIImage] = []
     private let nameField = UITextField()
     private let descView = UITextView()
-    private let priceField = UITextField()
-    private let usageField = UITextField()
     private let photosLabel = UILabel()
     private var photosCollection: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
@@ -20,36 +18,33 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         cv.showsHorizontalScrollIndicator = false
         return cv;
     }()
-    private let autoPriceLabel = UILabel()
     private let hopeItButton = UIButton(type: .system)
     private let categoryField = UITextField()
     private let categoryPicker = UIPickerView()
     private let categories = ["Books", "Clothes", "Entertainment", "Home", "Electronics"]
-    private let userPriceField = UITextField()
     private let postcodeField = UITextField()
-    private let usagePicker = UIPickerView()
-    private let usageOptions = ["1 year", "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10+ years"]
-    private let suggestedPriceLabel = UILabel()
-    private let suggestedPriceField = UITextField()
-    private var isEditingSuggestedPrice = false
-    private let setYourPriceField = UITextField()
-
-    private var products: [Product] = []
-    private var groupedProducts: [String: [Product]] = [:]
+    private let conditionField = UITextField()
+    private let conditionPicker = UIPickerView()
+    private let conditionOptions = ["New", "Good", "Moderate"]
+    private let charityField = UITextField()
+    private let charityPicker = UIPickerView()
+    private var charityOptions: [String] = []
+    private var charityIds: [Int] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         categoryPicker.dataSource = self
         categoryPicker.delegate = self
-        usagePicker.dataSource = self
-        usagePicker.delegate = self
+        conditionPicker.dataSource = self
+        conditionPicker.delegate = self
+        charityPicker.dataSource = self
+        charityPicker.delegate = self
         setupUI()
-        // Usage Duration için ilk değer otomatik seçili olsun
-        usagePicker.selectRow(0, inComponent: 0, animated: false)
-        usageField.text = usageOptions[0]
+        conditionPicker.selectRow(0, inComponent: 0, animated: false)
+        conditionField.text = conditionOptions[0]
         descView.delegate = self
-        fetchProducts()
+        fetchCharities()
     }
 
     private func setupUI() {
@@ -60,13 +55,27 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         nameField.borderStyle = .roundedRect
         nameField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(nameField)
-        // Kategori
+        // Category
         categoryField.placeholder = "Category"
         categoryField.font = commonFont
         categoryField.borderStyle = .roundedRect
         categoryField.translatesAutoresizingMaskIntoConstraints = false
         categoryField.inputView = categoryPicker
         view.addSubview(categoryField)
+        // Condition
+        conditionField.placeholder = "Condition"
+        conditionField.font = commonFont
+        conditionField.borderStyle = .roundedRect
+        conditionField.translatesAutoresizingMaskIntoConstraints = false
+        conditionField.inputView = conditionPicker
+        view.addSubview(conditionField)
+        // Charity
+        charityField.placeholder = "Charity"
+        charityField.font = commonFont
+        charityField.borderStyle = .roundedRect
+        charityField.translatesAutoresizingMaskIntoConstraints = false
+        charityField.inputView = charityPicker
+        view.addSubview(charityField)
         // Photos label
         photosLabel.text = "Photos"
         photosLabel.font = commonFont
@@ -93,37 +102,10 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         postcodeField.font = commonFont
         postcodeField.borderStyle = .roundedRect
         postcodeField.translatesAutoresizingMaskIntoConstraints = false
+        postcodeField.autocapitalizationType = .allCharacters
+        postcodeField.delegate = self
         view.addSubview(postcodeField)
-        // Price
-        priceField.placeholder = "Original Price (£)"
-        priceField.font = commonFont
-        priceField.borderStyle = .roundedRect
-        priceField.keyboardType = .decimalPad
-        priceField.translatesAutoresizingMaskIntoConstraints = false
-        priceField.delegate = self
-        view.addSubview(priceField)
-        // Usage Duration
-        usageField.placeholder = "Usage Duration"
-        usageField.font = commonFont
-        usageField.borderStyle = .roundedRect
-        usageField.inputView = usagePicker
-        usageField.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(usageField)
-        // Suggested Price (sadece bilgi amaçlı, tıklanamaz)
-        suggestedPriceLabel.text = "Suggested Price: £0.00"
-        suggestedPriceLabel.font = commonFont
-        suggestedPriceLabel.textColor = .secondaryLabel
-        suggestedPriceLabel.translatesAutoresizingMaskIntoConstraints = false
-        suggestedPriceLabel.isUserInteractionEnabled = false
-        view.addSubview(suggestedPriceLabel)
-        // Set Your Price (manuel giriş)
-        setYourPriceField.placeholder = "Set Your Price (£)"
-        setYourPriceField.font = commonFont
-        setYourPriceField.borderStyle = .roundedRect
-        setYourPriceField.keyboardType = .decimalPad
-        setYourPriceField.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(setYourPriceField)
-        // Hope It butonu
+        // Hope It button
         hopeItButton.setTitle("Be the Hope", for: .normal)
         hopeItButton.setTitleColor(.white, for: .normal)
         hopeItButton.titleLabel?.font = UIFont.systemFont(ofSize: 20, weight: .bold)
@@ -140,7 +122,13 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             categoryField.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 12),
             categoryField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             categoryField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            photosLabel.topAnchor.constraint(equalTo: categoryField.bottomAnchor, constant: 16),
+            conditionField.topAnchor.constraint(equalTo: categoryField.bottomAnchor, constant: 12),
+            conditionField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            conditionField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            charityField.topAnchor.constraint(equalTo: conditionField.bottomAnchor, constant: 12),
+            charityField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            charityField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            photosLabel.topAnchor.constraint(equalTo: charityField.bottomAnchor, constant: 16),
             photosLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             photosCollection.topAnchor.constraint(equalTo: photosLabel.bottomAnchor, constant: 10),
             photosCollection.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
@@ -153,19 +141,7 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             postcodeField.topAnchor.constraint(equalTo: descView.bottomAnchor, constant: 14),
             postcodeField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             postcodeField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            priceField.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 16),
-            priceField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            usageField.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 16),
-            usageField.leadingAnchor.constraint(equalTo: priceField.trailingAnchor, constant: 16),
-            usageField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            priceField.widthAnchor.constraint(equalTo: usageField.widthAnchor),
-            suggestedPriceLabel.topAnchor.constraint(equalTo: priceField.bottomAnchor, constant: 12),
-            suggestedPriceLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            suggestedPriceLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            setYourPriceField.topAnchor.constraint(equalTo: suggestedPriceLabel.bottomAnchor, constant: 8),
-            setYourPriceField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            setYourPriceField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            hopeItButton.topAnchor.constraint(equalTo: setYourPriceField.bottomAnchor, constant: 32),
+            hopeItButton.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 32),
             hopeItButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             hopeItButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
             hopeItButton.heightAnchor.constraint(equalToConstant: 48)
@@ -173,12 +149,8 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     // MARK: - UICollectionViewDataSource
-    func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return 1
-    }
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return images.count + 1 // +1: Add photo cell
-    }
+    func numberOfSections(in collectionView: UICollectionView) -> Int { 1 }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { images.count + 1 }
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if indexPath.item == 0 {
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "AddPhotoCell", for: indexPath) as! AddPhotoCell
@@ -193,9 +165,7 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     // MARK: - UICollectionViewDelegate
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        if indexPath.item == 0 {
-            addPhotoTapped()
-        }
+        if indexPath.item == 0 { addPhotoTapped() }
     }
     // MARK: - Add Photo
     @objc private func addPhotoTapped() {
@@ -219,34 +189,8 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
         images.remove(at: index)
         photosCollection.reloadData()
     }
-    func textFieldDidEndEditing(_ textField: UITextField) {
-        updateAutoPrice()
-    }
-    func updateAutoPrice() {
-        let price = Double(priceField.text ?? "") ?? 0
-        let usageText = usageField.text ?? ""
-        let discountRates: [String: Double] = [
-            "1 year": 0.20,
-            "2 years": 0.25,
-            "3 years": 0.30,
-            "4 years": 0.35,
-            "5 years": 0.40,
-            "6 years": 0.45,
-            "7 years": 0.50,
-            "8 years": 0.55,
-            "9 years": 0.60,
-            "10+ years": 0.65
-        ]
-        let discount = discountRates[usageText] ?? 0.0
-        let suggested = price * (1.0 - discount)
-        let text = String(format: "Suggested Price: £%.2f", suggested)
-        suggestedPriceLabel.text = text
-        if !isEditingSuggestedPrice {
-            suggestedPriceField.text = String(format: "%.2f", suggested)
-        }
-    }
     @objc private func hopeItTapped() {
-        // Önce kullanıcı girişi kontrolü
+        // User login check
         guard let currentUser = AuthManager.shared.currentUser else {
             let alert = UIAlertController(title: "Login Required", message: "Please login to add a product", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "Login", style: .default) { _ in
@@ -264,27 +208,19 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             present(alert, animated: true)
             return
         }
-
-        // Diğer alanların kontrolü
+        // Field validation
         guard let title = nameField.text, !title.isEmpty,
               let description = descView.text, !description.isEmpty,
-              let originalPriceText = priceField.text, let originalPrice = Double(originalPriceText),
-              let suggestedPriceText = suggestedPriceField.text, let suggestedPrice = Double(suggestedPriceText),
-              let givenPriceText = setYourPriceField.text, let givenPrice = Double(givenPriceText),
               let postCode = postcodeField.text, !postCode.isEmpty else {
             let alert = UIAlertController(title: "Error", message: "Please fill in all required fields", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
             return
         }
-
         let categoryId = categoryPicker.selectedRow(inComponent: 0) + 1
-        let usageDuration = usagePicker.selectedRow(inComponent: 0)
-        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Creating listing...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
-        
         Task {
             do {
                 let product = try await NetworkManager.shared.createListing(
@@ -292,13 +228,9 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
                     description: description,
                     categoryId: categoryId,
                     userId: userId,
-                    originalPrice: originalPrice,
-                    usageDuration: usageDuration,
-                    suggestedPrice: suggestedPrice,
-                    givenPrice: givenPrice,
                     postCode: postCode
                 )
-                // Eğer fotoğraf varsa, local path'i kaydet
+                // If there is a photo, save local path
                 if let productId = product.id, let _ = self.images.first {
                     let imagePath = "local_image.jpg"
                     try? await NetworkManager.shared.addListingPhoto(listingId: productId, path: imagePath)
@@ -314,13 +246,9 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
                             self.descView.text = "Description"
                             self.descView.textColor = .secondaryLabel
                             self.postcodeField.text = ""
-                            self.priceField.text = ""
-                            self.usageField.text = ""
-                            self.setYourPriceField.text = ""
-                            self.suggestedPriceField.text = ""
                             self.images.removeAll()
                             self.photosCollection.reloadData()
-                            // Anasayfaya yönlendir
+                            // Redirect to home
                             if let tabBarController = self.tabBarController {
                                 tabBarController.selectedIndex = 0
                                 self.navigationController?.popToRootViewController(animated: true)
@@ -351,73 +279,41 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         }
     }
-
     // MARK: - UIPickerViewDataSource
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 1
-    }
-
+    func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
         if pickerView == categoryPicker {
             return categories.count
-        } else if pickerView == usagePicker {
-            return usageOptions.count
+        } else if pickerView == conditionPicker {
+            return conditionOptions.count
+        } else if pickerView == charityPicker {
+            return charityOptions.count
         }
         return 0
     }
-
     // MARK: - UIPickerViewDelegate
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
         if pickerView == categoryPicker {
             return categories[row]
-        } else if pickerView == usagePicker {
-            return usageOptions[row]
+        } else if pickerView == conditionPicker {
+            return conditionOptions[row]
+        } else if pickerView == charityPicker {
+            return charityOptions[row]
         }
         return nil
     }
-
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         if pickerView == categoryPicker {
             categoryField.text = categories[row]
             categoryField.resignFirstResponder()
-        } else if pickerView == usagePicker {
-            usageField.text = usageOptions[row]
-            usageField.resignFirstResponder()
-            updateAutoPrice()
+        } else if pickerView == conditionPicker {
+            conditionField.text = conditionOptions[row]
+            conditionField.resignFirstResponder()
+        } else if pickerView == charityPicker {
+            charityField.text = charityOptions[row]
+            charityField.resignFirstResponder()
         }
     }
-
-    private func fetchProducts() {
-        Task {
-            do {
-                let products = try await NetworkManager.shared.fetchAllListings()
-                self.products = products
-                self.groupProductsByCategory()
-                DispatchQueue.main.async {
-                    self.photosCollection.reloadData()
-                }
-            } catch {
-                print("Failed to fetch products: \(error)")
-            }
-        }
-    }
-
-    private func groupProductsByCategory() {
-        groupedProducts = Dictionary(grouping: products) { product in
-            categoryNames[product.category_id ?? 0] ?? "Uncategorized"
-        }
-    }
-
-    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        if kind == UICollectionView.elementKindSectionHeader {
-            let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "CategoryHeader", for: indexPath) as! CategoryHeaderView
-            let category = Array(groupedProducts.keys)[indexPath.section]
-            headerView.titleLabel.text = category
-            return headerView
-        }
-        return UICollectionReusableView()
-    }
-
     // MARK: - UITextViewDelegate
     func textViewDidBeginEditing(_ textView: UITextView) {
         if textView == descView && textView.text == "Description" {
@@ -431,8 +327,36 @@ class BeHopeViewController: UIViewController, UIImagePickerControllerDelegate, U
             textView.textColor = .secondaryLabel
         }
     }
+    // Charity list from API
+    private func fetchCharities() {
+        Task {
+            do {
+                let charities = try await NetworkManager.shared.fetchCharities()
+                self.charityOptions = charities.map { $0.name }
+                self.charityIds = charities.map { $0.id }
+                DispatchQueue.main.async {
+                    self.charityPicker.reloadAllComponents()
+                }
+            } catch {
+                print("Failed to fetch charities: \(error)")
+            }
+        }
+    }
+    // MARK: - UITextFieldDelegate
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        if textField == postcodeField {
+            // Uppercase for postcode
+            if let textRange = Range(range, in: textField.text ?? "") {
+                let updatedText = (textField.text ?? "").replacingCharacters(in: textRange, with: string.uppercased())
+                textField.text = updatedText
+                return false
+            }
+        }
+        return true
+    }
 }
 
+// PhotoCell and AddPhotoCell definitions (as before)
 class PhotoCell: UICollectionViewCell {
     let imageView: UIImageView = {
         let iv = UIImageView()
@@ -442,7 +366,6 @@ class PhotoCell: UICollectionViewCell {
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
-    
     let deleteButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
@@ -452,28 +375,23 @@ class PhotoCell: UICollectionViewCell {
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
         contentView.addSubview(imageView)
         contentView.addSubview(deleteButton)
-        
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            
             deleteButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
             deleteButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -4),
             deleteButton.widthAnchor.constraint(equalToConstant: 20),
             deleteButton.heightAnchor.constraint(equalToConstant: 20)
         ])
     }
-    
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
-
 class AddPhotoCell: UICollectionViewCell {
     let plusView: UIView = {
         let v = UIView()
@@ -505,27 +423,4 @@ class AddPhotoCell: UICollectionViewCell {
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-}
-
-extension BeHopeViewController {
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        if textField == priceField {
-            let currentText = textField.text ?? ""
-            if Range(range, in: currentText) != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                    self.updateAutoPrice()
-                }
-            }
-        }
-        return true
-    }
-    func textFieldDidBeginEditing(_ textField: UITextField) {
-        if textField == usageField {
-            if usageField.text?.isEmpty ?? true {
-                usagePicker.selectRow(0, inComponent: 0, animated: false)
-                usageField.text = usageOptions[0]
-                updateAutoPrice()
-            }
-        }
-    }
 } 
