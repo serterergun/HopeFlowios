@@ -47,7 +47,31 @@ class ProductRowCell: UICollectionViewCell, UICollectionViewDelegate, UICollecti
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProductCell", for: indexPath) as! ProductCell
         let product = products[indexPath.item]
-        cell.configure(with: product)
+        
+        // Set favorite state
+        var mutableProduct = product
+        if let id = product.id {
+            mutableProduct.isFavorite = FavoriteManager.shared.isFavorite(productId: id)
+        }
+        
+        cell.configure(with: mutableProduct, favoriteAction: {
+            guard let id = mutableProduct.id, let userId = AuthManager.shared.currentUser?.id else { return }
+            if FavoriteManager.shared.isFavorite(productId: id) {
+                FavoriteManager.shared.removeFavorite(userId: userId, productId: id) { _ in
+                    DispatchQueue.main.async {
+                        mutableProduct.isFavorite = false
+                        cell.configure(with: mutableProduct, favoriteAction: cell.favoriteAction)
+                    }
+                }
+            } else {
+                FavoriteManager.shared.addFavorite(userId: userId, productId: id) { _ in
+                    DispatchQueue.main.async {
+                        mutableProduct.isFavorite = true
+                        cell.configure(with: mutableProduct, favoriteAction: cell.favoriteAction)
+                    }
+                }
+            }
+        })
         return cell
     }
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {

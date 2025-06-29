@@ -17,6 +17,7 @@ let categoryNames: [Int: String] = [
 ]
 
 class ViewController: UIViewController, CLLocationManagerDelegate {
+    static var userLocation: CLLocation?
     private var products: [Product] = []
     private var filteredProducts: [Product] = []
     private var groupedProducts: [String: [Product]] = [:]
@@ -125,11 +126,11 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
             // Section
             let section = NSCollectionLayoutSection(group: group)
             section.orthogonalScrollingBehavior = .continuous
-            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 32, trailing: 16)
+            section.contentInsets = NSDirectionalEdgeInsets(top: -8, leading: 12, bottom: 32, trailing: 16)
             section.interGroupSpacing = 12
 
             // Header
-            let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(40))
+            let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(56))
             let sectionHeader = NSCollectionLayoutBoundarySupplementaryItem(
                 layoutSize: headerSize,
                 elementKind: UICollectionView.elementKindSectionHeader,
@@ -142,6 +143,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        ViewController.userLocation = locations.last
         userLocation = locations.last
         collectionView.reloadData()
     }
@@ -215,7 +217,35 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
             } else {
                 distanceString = "0 mi"
             }
-            cell.configure(with: product, ownerName: ownerName, distanceString: distanceString)
+            
+            // Set favorite state
+            var mutableProduct = product
+            if let id = product.id {
+                mutableProduct.isFavorite = FavoriteManager.shared.isFavorite(productId: id)
+            }
+            
+            let currentUserId = AuthManager.shared.currentUser?.id
+            let isOwnProduct = (currentUserId != nil && product.user_id == currentUserId)
+            
+            cell.configure(with: mutableProduct, ownerName: ownerName, favoriteAction: isOwnProduct ? nil : {
+                guard let id = mutableProduct.id, let userId = AuthManager.shared.currentUser?.id else { return }
+                if FavoriteManager.shared.isFavorite(productId: id) {
+                    FavoriteManager.shared.removeFavorite(userId: userId, productId: id) { _ in
+                        DispatchQueue.main.async {
+                            mutableProduct.isFavorite = false
+                            cell.configure(with: mutableProduct, ownerName: ownerName, favoriteAction: cell.favoriteAction, distanceString: distanceString)
+                        }
+                    }
+                } else {
+                    FavoriteManager.shared.addFavorite(userId: userId, productId: id) { _ in
+                        DispatchQueue.main.async {
+                            mutableProduct.isFavorite = true
+                            cell.configure(with: mutableProduct, ownerName: ownerName, favoriteAction: cell.favoriteAction, distanceString: distanceString)
+                        }
+                    }
+                }
+            }, distanceString: distanceString)
+            cell.setFavoriteButtonHidden(isOwnProduct)
         }
         return cell
     }

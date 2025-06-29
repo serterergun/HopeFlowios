@@ -63,6 +63,45 @@ class RegisterViewController: UIViewController {
         return button
     }()
     
+    // Şifre gücü göstergesi barı ve etiketi
+    private let passwordStrengthBar: UIView = {
+        let bar = UIView()
+        bar.backgroundColor = .systemGray4
+        bar.layer.cornerRadius = 2
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        return bar
+    }()
+    private let passwordStrengthLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .systemGray
+        label.text = "Password Strength: "
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    private enum PasswordStrength: Int {
+        case weak = 0
+        case medium
+        case strong
+    }
+    private func checkPasswordStrength(_ password: String) -> PasswordStrength {
+        if password.count < 6 { return .weak }
+        let hasLetters = password.rangeOfCharacter(from: .letters) != nil
+        let hasDigits = password.rangeOfCharacter(from: .decimalDigits) != nil
+        let hasSpecial = password.rangeOfCharacter(from: .symbols) != nil || password.rangeOfCharacter(from: .punctuationCharacters) != nil
+        if hasLetters && hasDigits && hasSpecial { return .strong }
+        if (hasLetters && hasDigits) || (hasLetters && hasSpecial) || (hasDigits && hasSpecial) { return .medium }
+        return .weak
+    }
+    
+    private let showHidePasswordButton: UIButton = {
+        let button = UIButton(type: .custom)
+        button.setImage(UIImage(systemName: "eye.slash"), for: .normal)
+        button.tintColor = .gray
+        button.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
+        return button
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -80,6 +119,13 @@ class RegisterViewController: UIViewController {
         confirmPasswordField.autocorrectionType = .no
         confirmPasswordField.autocapitalizationType = .none
         confirmPasswordField.textContentType = .oneTimeCode
+        passwordField.addTarget(self, action: #selector(passwordFieldDidChange), for: .editingChanged)
+        passwordField.rightView = showHidePasswordButton
+        passwordField.rightViewMode = .always
+        showHidePasswordButton.addTarget(self, action: #selector(togglePasswordVisibility), for: .touchUpInside)
+        firstNameField.addTarget(self, action: #selector(firstNameEditingChanged), for: .editingChanged)
+        lastNameField.addTarget(self, action: #selector(lastNameEditingChanged), for: .editingChanged)
+        emailField.addTarget(self, action: #selector(emailEditingChanged), for: .editingChanged)
     }
     
     private func setupUI() {
@@ -87,6 +133,8 @@ class RegisterViewController: UIViewController {
         view.addSubview(lastNameField)
         view.addSubview(emailField)
         view.addSubview(passwordField)
+        view.addSubview(passwordStrengthBar)
+        view.addSubview(passwordStrengthLabel)
         view.addSubview(confirmPasswordField)
         view.addSubview(registerButton)
         view.addSubview(loginButton)
@@ -108,7 +156,15 @@ class RegisterViewController: UIViewController {
             passwordField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             passwordField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             
-            confirmPasswordField.topAnchor.constraint(equalTo: passwordField.bottomAnchor, constant: 16),
+            passwordStrengthBar.topAnchor.constraint(equalTo: passwordField.bottomAnchor, constant: 4),
+            passwordStrengthBar.leadingAnchor.constraint(equalTo: passwordField.leadingAnchor),
+            passwordStrengthBar.widthAnchor.constraint(equalTo: passwordField.widthAnchor, multiplier: 0.5),
+            passwordStrengthBar.heightAnchor.constraint(equalToConstant: 4),
+            
+            passwordStrengthLabel.topAnchor.constraint(equalTo: passwordStrengthBar.bottomAnchor, constant: 2),
+            passwordStrengthLabel.leadingAnchor.constraint(equalTo: passwordField.leadingAnchor),
+            
+            confirmPasswordField.topAnchor.constraint(equalTo: passwordStrengthLabel.bottomAnchor, constant: 16),
             confirmPasswordField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             confirmPasswordField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             
@@ -154,9 +210,14 @@ class RegisterViewController: UIViewController {
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
                         // Show success message
-                        self.showAlert(title: "Success", message: "Registration successful") { _ in
-                            // Dismiss registration screen
-                            self.dismiss(animated: true)
+                        self.showAlert(title: "Success", message: "Registration successful! Please login with your credentials.") { _ in
+                            // Dismiss registration screen and show login
+                            self.dismiss(animated: true) {
+                                // Show login screen
+                                let loginVC = LoginViewController()
+                                loginVC.modalPresentationStyle = .fullScreen
+                                self.present(loginVC, animated: true)
+                            }
                         }
                     }
                 }
@@ -173,6 +234,56 @@ class RegisterViewController: UIViewController {
     
     @objc private func loginTapped() {
         dismiss(animated: true)
+    }
+    
+    @objc private func passwordFieldDidChange() {
+        let password = passwordField.text ?? ""
+        let strength = checkPasswordStrength(password)
+        switch strength {
+        case .weak:
+            passwordStrengthBar.backgroundColor = .systemRed
+            passwordStrengthLabel.text = "Password Strength: Weak"
+            passwordStrengthLabel.textColor = .systemRed
+        case .medium:
+            passwordStrengthBar.backgroundColor = .systemYellow
+            passwordStrengthLabel.text = "Password Strength: Medium"
+            passwordStrengthLabel.textColor = .systemYellow
+        case .strong:
+            passwordStrengthBar.backgroundColor = .systemGreen
+            passwordStrengthLabel.text = "Password Strength: Strong"
+            passwordStrengthLabel.textColor = .systemGreen
+        }
+    }
+    
+    @objc private func togglePasswordVisibility() {
+        passwordField.isSecureTextEntry.toggle()
+        let imageName = passwordField.isSecureTextEntry ? "eye.slash" : "eye"
+        showHidePasswordButton.setImage(UIImage(systemName: imageName), for: .normal)
+        if passwordField.isFirstResponder {
+            passwordField.becomeFirstResponder()
+        }
+    }
+    
+    @objc private func firstNameEditingChanged() {
+        guard let text = firstNameField.text, !text.isEmpty else { return }
+        let formatted = text.prefix(1).uppercased() + text.dropFirst().lowercased()
+        if firstNameField.text != formatted {
+            firstNameField.text = formatted
+        }
+    }
+    @objc private func lastNameEditingChanged() {
+        guard let text = lastNameField.text, !text.isEmpty else { return }
+        let formatted = text.prefix(1).uppercased() + text.dropFirst().lowercased()
+        if lastNameField.text != formatted {
+            lastNameField.text = formatted
+        }
+    }
+    @objc private func emailEditingChanged() {
+        guard let text = emailField.text, !text.isEmpty else { return }
+        let formatted = text.lowercased()
+        if emailField.text != formatted {
+            emailField.text = formatted
+        }
     }
     
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {

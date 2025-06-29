@@ -21,5 +21,26 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to show nearby products and help you find donations in your area.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to take photos of your donations so others can see what you're offering.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to select images for your donations from your existing photos.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -1,0 +1,11 @@
+- Urun detay sayfasi guncellenecek
+- Home ekranindaki urun favori ikonu aktif hale getirilecek. Kullanici ikonu tikladiginda ikon sari olacak ve urunu kullanicinin favorilerine ekleyecek
+- Donation yapilacak kurumu hem urun sahibi hem de urunu satin alan belirleyecek
+- Postcode alani zorunlu olmali
+- Lokasyon bilgisi aktif olacak
+- Favori ikonu aktif hale getirilecek
+- Distance bilgisi kullanicinin register olurken girdigi postcode ile urun ekleyen kullanicinin urun eklerken girdigi postcode arasindaki mesafeyi longitude ve latitude olarak hesaplanmasiyla ortaya cikacak.
+- Urun detay ekraninda urunun konumu harita uzerinde gosterilecek
+- Urun detay sayfasinda Request Item yerine Make an Offer olacak
+- Urun detay sayfasinda urun sahibine mesaj gondermek icin Send Message butonu olmali. Yazilan mesajlar database'in listing_message tablosuna kaydedilecek
+- Kullanici register oldugunda kullanicinin mail adresine bir confirmation maili gonderilmeli ve kullanici confirm ettiginde kullanicinin kaydini tamamlamali.

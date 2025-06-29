@@ -30,6 +30,16 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
     private let charityPicker = UIPickerView()
     private var charityOptions: [String] = []
     private var charityIds: [Int] = []
+    private let priceField = UITextField()
+    private let postcodeWarningLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = .systemRed
+        label.font = UIFont.systemFont(ofSize: 13, weight: .regular)
+        label.numberOfLines = 0
+        label.isHidden = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -97,6 +107,13 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
         descView.textColor = .secondaryLabel
         descView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(descView)
+        // Price
+        priceField.placeholder = "Price (£)"
+        priceField.font = commonFont
+        priceField.borderStyle = .roundedRect
+        priceField.keyboardType = .decimalPad
+        priceField.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(priceField)
         // Postcode
         postcodeField.placeholder = "Postcode"
         postcodeField.font = commonFont
@@ -105,8 +122,10 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
         postcodeField.autocapitalizationType = .allCharacters
         postcodeField.delegate = self
         view.addSubview(postcodeField)
-        // Hope It button
-        hopeItButton.setTitle("Be the Hope", for: .normal)
+        // Postcode warning label
+        view.addSubview(postcodeWarningLabel)
+        // Hope It button (Donate)
+        hopeItButton.setTitle("Donate", for: .normal)
         hopeItButton.setTitleColor(.white, for: .normal)
         hopeItButton.titleLabel?.font = UIFont.systemFont(ofSize: 20, weight: .bold)
         hopeItButton.backgroundColor = .systemPurple
@@ -138,10 +157,17 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
             descView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             descView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             descView.heightAnchor.constraint(equalToConstant: 80),
-            postcodeField.topAnchor.constraint(equalTo: descView.bottomAnchor, constant: 14),
+            priceField.topAnchor.constraint(equalTo: descView.bottomAnchor, constant: 12),
+            priceField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            priceField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            priceField.heightAnchor.constraint(equalToConstant: 44),
+            postcodeField.topAnchor.constraint(equalTo: priceField.bottomAnchor, constant: 14),
             postcodeField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             postcodeField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            hopeItButton.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 32),
+            postcodeWarningLabel.topAnchor.constraint(equalTo: postcodeField.bottomAnchor, constant: 2),
+            postcodeWarningLabel.leadingAnchor.constraint(equalTo: postcodeField.leadingAnchor),
+            postcodeWarningLabel.trailingAnchor.constraint(equalTo: postcodeField.trailingAnchor),
+            hopeItButton.topAnchor.constraint(equalTo: postcodeWarningLabel.bottomAnchor, constant: 30),
             hopeItButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             hopeItButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
             hopeItButton.heightAnchor.constraint(equalToConstant: 48)
@@ -217,24 +243,56 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
             present(alert, animated: true)
             return
         }
+        // Postcode validity check
+        guard isValidPostcode(postCode) else {
+            postcodeWarningLabel.text = "Please enter a valid UK postcode."
+            postcodeWarningLabel.isHidden = false
+            hopeItButton.isEnabled = false
+            hopeItButton.alpha = 0.5
+            postcodeField.becomeFirstResponder()
+            return
+        }
+        
+        // Get selected charity ID
+        let selectedCharityIndex = charityPicker.selectedRow(inComponent: 0)
+        guard selectedCharityIndex >= 0 && selectedCharityIndex < charityIds.count else {
+            let alert = UIAlertController(title: "Error", message: "Please select a charity", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        let charityId = charityIds[selectedCharityIndex]
+        
         let categoryId = categoryPicker.selectedRow(inComponent: 0) + 1
+        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Creating listing...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
+        
         Task {
             do {
-                let product = try await NetworkManager.shared.createListing(
+                // Get condition and price values
+                let selectedConditionIndex = conditionPicker.selectedRow(inComponent: 0)
+                let condition = selectedConditionIndex >= 0 && selectedConditionIndex < conditionOptions.count ? conditionOptions[selectedConditionIndex] : nil
+                
+                let price: Double? = {
+                    guard let priceText = priceField.text, !priceText.isEmpty else { return nil }
+                    return Double(priceText)
+                }()
+                
+                // Create listing with photos in a single request (optimized)
+                let _ = try await NetworkManager.shared.createListingWithPhotos(
                     title: title,
                     description: description,
                     categoryId: categoryId,
                     userId: userId,
-                    postCode: postCode
+                    postCode: postCode,
+                    charityId: charityId,
+                    price: price,
+                    condition: condition,
+                    images: self.images
                 )
-                // If there is a photo, save local path
-                if let productId = product.id, let _ = self.images.first {
-                    let imagePath = "local_image.jpg"
-                    try? await NetworkManager.shared.addListingPhoto(listingId: productId, path: imagePath)
-                }
+                
                 // Dismiss loading alert and show success message
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
@@ -243,11 +301,18 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
                             // Clear the form
                             self.nameField.text = ""
                             self.categoryField.text = ""
+                            self.conditionField.text = self.conditionOptions[0]
+                            self.charityField.text = ""
                             self.descView.text = "Description"
                             self.descView.textColor = .secondaryLabel
                             self.postcodeField.text = ""
+                            self.priceField.text = ""
                             self.images.removeAll()
                             self.photosCollection.reloadData()
+                            // Reset pickers
+                            self.categoryPicker.selectRow(0, inComponent: 0, animated: false)
+                            self.conditionPicker.selectRow(0, inComponent: 0, animated: false)
+                            self.charityPicker.selectRow(0, inComponent: 0, animated: false)
                             // Redirect to home
                             if let tabBarController = self.tabBarController {
                                 tabBarController.selectedIndex = 0
@@ -279,6 +344,7 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         }
     }
+    
     // MARK: - UIPickerViewDataSource
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
@@ -342,6 +408,13 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         }
     }
+    // MARK: - UK postcode validation
+    private func isValidPostcode(_ postcode: String) -> Bool {
+        let pattern = "^(GIR 0AA|[A-Z]{1,2}[0-9][0-9A-Z]?[ ]?[0-9][A-Z]{2})$"
+        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        let range = NSRange(location: 0, length: postcode.trimmingCharacters(in: .whitespacesAndNewlines).count)
+        return regex?.firstMatch(in: postcode.trimmingCharacters(in: .whitespacesAndNewlines), options: [], range: range) != nil
+    }
     // MARK: - UITextFieldDelegate
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
         if textField == postcodeField {
@@ -349,10 +422,35 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
             if let textRange = Range(range, in: textField.text ?? "") {
                 let updatedText = (textField.text ?? "").replacingCharacters(in: textRange, with: string.uppercased())
                 textField.text = updatedText
+                validatePostcodeAndUpdateUI(updatedText)
                 return false
             }
         }
         return true
+    }
+    
+    private func validatePostcodeAndUpdateUI(_ postcode: String) {
+        if postcode.isEmpty {
+            postcodeWarningLabel.isHidden = true
+            hopeItButton.isEnabled = false
+            hopeItButton.alpha = 0.5
+            return
+        }
+        if isValidPostcode(postcode) {
+            postcodeWarningLabel.isHidden = true
+            hopeItButton.isEnabled = true
+            hopeItButton.alpha = 1.0
+        } else {
+            postcodeWarningLabel.text = "Please enter a valid UK postcode."
+            postcodeWarningLabel.isHidden = false
+            hopeItButton.isEnabled = false
+            hopeItButton.alpha = 0.5
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        validatePostcodeAndUpdateUI(postcodeField.text ?? "")
     }
 }
 

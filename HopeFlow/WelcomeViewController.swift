@@ -70,8 +70,8 @@ class WelcomeViewController: UIViewController {
             // Tab bar controller'ı tekrar oluştur
             let homeVC = UINavigationController(rootViewController: ViewController())
             homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
-            let donationsVC = ImpactViewController()
-            donationsVC.tabBarItem = UITabBarItem(title: "Impact", image: UIImage(systemName: "gift.fill"), tag: 1)
+            let basketVC = BasketViewController()
+            basketVC.tabBarItem = UITabBarItem(title: "Basket", image: UIImage(systemName: "cart"), tag: 1)
             let beHopeVC = DonateViewController()
             beHopeVC.tabBarItem = UITabBarItem(title: "Donate", image: UIImage(systemName: "plus.circle.fill"), tag: 2)
             let messagesVC = MessagesViewController()
@@ -79,7 +79,7 @@ class WelcomeViewController: UIViewController {
             let accountVC = UINavigationController(rootViewController: AccountViewController())
             accountVC.tabBarItem = UITabBarItem(title: "Account", image: UIImage(systemName: "person.crop.circle"), tag: 4)
             let tabBarController = CustomTabBarController()
-            tabBarController.viewControllers = [homeVC, donationsVC, beHopeVC, messagesVC, accountVC]
+            tabBarController.viewControllers = [homeVC, basketVC, beHopeVC, messagesVC, accountVC]
             window.rootViewController = tabBarController
             window.makeKeyAndVisible()
         }
@@ -118,6 +118,22 @@ class CustomTabBarController: UITabBarController, UITabBarControllerDelegate {
         updateIndicator(animated: false)
     }
     func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+        // Account sekmesine tıklandığında login kontrolü yap
+        if let navigationController = viewController as? UINavigationController,
+           navigationController.viewControllers.first is AccountViewController {
+            // Kullanıcı login değilse login ekranını göster
+            if !AuthManager.shared.isLoggedIn {
+                let loginVC = LoginViewController()
+                loginVC.modalPresentationStyle = .fullScreen
+                loginVC.onRegisterTapped = { [weak self] in
+                    let registerVC = RegisterViewController()
+                    registerVC.modalPresentationStyle = .fullScreen
+                    self?.present(registerVC, animated: true)
+                }
+                present(loginVC, animated: true)
+                return false // Account sekmesine geçişi engelle
+            }
+        }
         return true
     }
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
@@ -129,7 +145,7 @@ class CustomTabBarController: UITabBarController, UITabBarControllerDelegate {
             tabBar.tintColor = .homePrimary
             tabBar.unselectedItemTintColor = .secondaryColor
         case 1:
-            tabBar.tintColor = .impactPrimary
+            tabBar.tintColor = .systemBlue
             tabBar.unselectedItemTintColor = .secondaryColor
         default:
             tabBar.tintColor = .systemBlue
@@ -171,7 +187,7 @@ class CustomTabBarController: UITabBarController, UITabBarControllerDelegate {
         if selectedIndex == 0 {
             self.indicator.backgroundColor = .homePrimary
         } else if selectedIndex == 1 {
-            self.indicator.backgroundColor = .impactPrimary
+            self.indicator.backgroundColor = .systemBlue
         } else {
             self.indicator.backgroundColor = .systemBlue
         }

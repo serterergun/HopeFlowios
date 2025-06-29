@@ -3,31 +3,47 @@ import Foundation
 class AuthManager {
     static let shared = AuthManager()
     
-    private(set) var isAuthenticated = false
-    private(set) var currentUser: User? = nil
+    var currentUser: User? = nil
     private(set) var token: String? = nil
     
+    // Computed property - tutarlılık için sadece bu kullanılacak
+    var isLoggedIn: Bool {
+        return currentUser != nil && token != nil && !token!.isEmpty
+    }
+    
+    // Deprecated - geriye uyumluluk için tutuldu
+    var isAuthenticated: Bool {
+        return isLoggedIn
+    }
+    
     private init() {
-        // Ensure user is logged out by default
-        isAuthenticated = false
-        currentUser = nil
-        token = nil
         checkAuthStatus()
     }
     
     func login(email: String, password: String) async throws {
         do {
+            print("DEBUG: Starting login process for email: \(email)")
+            
             // 1. Login endpoint (should return token)
             let (_, token) = try await NetworkManager.shared.loginAndGetToken(email: email, password: password)
+            print("DEBUG: Token received from login: \(token)")
+            
             self.token = token
             UserDefaults.standard.set(token, forKey: "authToken")
+            print("DEBUG: Token stored in AuthManager and UserDefaults")
+            
             // 2. Fetch current user with token
             let user = try await NetworkManager.shared.getCurrentUser(token: token)
             self.currentUser = user
-            self.isAuthenticated = true
             UserDefaults.standard.set(true, forKey: "isAuthenticated")
+            print("DEBUG: User fetched and stored: \(user)")
+            
             NotificationCenter.default.post(name: .userDidLogin, object: nil)
+            print("DEBUG: Login process completed successfully")
         } catch {
+            print("DEBUG: Login failed with error: \(error)")
+            // Login başarısız olursa state'i temizle
+            logout()
             throw error
         }
     }
@@ -36,9 +52,10 @@ class AuthManager {
         do {
             let user = try await NetworkManager.shared.register(firstName: firstName, lastName: lastName, email: email, password: password)
             self.currentUser = user
-            self.isAuthenticated = true
-            UserDefaults.standard.set(true, forKey: "isAuthenticated")
-            NotificationCenter.default.post(name: .userDidLogin, object: nil)
+            // Register sonrası otomatik login yapılmıyor, kullanıcı manuel login yapmalı
+            UserDefaults.standard.set(false, forKey: "isAuthenticated")
+            UserDefaults.standard.removeObject(forKey: "authToken")
+            NotificationCenter.default.post(name: .userDidRegister, object: nil)
         } catch {
             throw error
         }
@@ -46,32 +63,49 @@ class AuthManager {
     
     func logout() {
         currentUser = nil
-        isAuthenticated = false
         token = nil
         UserDefaults.standard.removeObject(forKey: "isAuthenticated")
         UserDefaults.standard.removeObject(forKey: "authToken")
         NotificationCenter.default.post(name: .userDidLogout, object: nil)
-        // Clear any stored auth tokens
     }
     
     private func checkAuthStatus() {
-        isAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
-        token = UserDefaults.standard.string(forKey: "authToken")
-        // If authenticated, fetch user data from API
-        if isAuthenticated, let token = token {
+        let savedToken = UserDefaults.standard.string(forKey: "authToken")
+        let wasAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
+        
+        // Token varsa ve geçerliyse kullanıcı bilgilerini al
+        if let token = savedToken, !token.isEmpty, wasAuthenticated {
+            self.token = token
             Task {
                 do {
                     let user = try await NetworkManager.shared.getCurrentUser(token: token)
                     self.currentUser = user
                 } catch {
+                    // Token geçersizse logout yap
                     self.logout()
                 }
             }
+        } else {
+            // Token yoksa veya geçersizse logout yap
+            logout()
         }
     }
     
-    var isLoggedIn: Bool {
-        return currentUser != nil && token != nil
+    // Token validation
+    func validateToken() async -> Bool {
+        guard let token = token, !token.isEmpty else {
+            logout()
+            return false
+        }
+        
+        do {
+            let user = try await NetworkManager.shared.getCurrentUser(token: token)
+            self.currentUser = user
+            return true
+        } catch {
+            logout()
+            return false
+        }
     }
 }
 
@@ -79,4 +113,5 @@ class AuthManager {
 extension Notification.Name {
     static let userDidLogin = Notification.Name("userDidLogin")
     static let userDidLogout = Notification.Name("userDidLogout")
+    static let userDidRegister = Notification.Name("userDidRegister")
 } 
