@@ -1,11 +1,16 @@
-- Urun detay sayfasi guncellenecek
-- Home ekranindaki urun favori ikonu aktif hale getirilecek. Kullanici ikonu tikladiginda ikon sari olacak ve urunu kullanicinin favorilerine ekleyecek
-- Donation yapilacak kurumu hem urun sahibi hem de urunu satin alan belirleyecek
-- Postcode alani zorunlu olmali
-- Lokasyon bilgisi aktif olacak
-- Favori ikonu aktif hale getirilecek
+- Urun detay sayfasi guncellenecek - Done
+- Home ekranindaki urun favori ikonu aktif hale getirilecek. Kullanici ikonu tikladiginda ikon sari olacak ve urunu kullanicinin favorilerine ekleyecek - Done
+- Postcode alani zorunlu olmali - Done
 - Distance bilgisi kullanicinin register olurken girdigi postcode ile urun ekleyen kullanicinin urun eklerken girdigi postcode arasindaki mesafeyi longitude ve latitude olarak hesaplanmasiyla ortaya cikacak.
-- Urun detay ekraninda urunun konumu harita uzerinde gosterilecek
 - Urun detay sayfasinda Request Item yerine Make an Offer olacak
 - Urun detay sayfasinda urun sahibine mesaj gondermek icin Send Message butonu olmali. Yazilan mesajlar database'in listing_message tablosuna kaydedilecek
 - Kullanici register oldugunda kullanicinin mail adresine bir confirmation maili gonderilmeli ve kullanici confirm ettiginde kullanicinin kaydini tamamlamali.
+- Tabbed menude Impact yerine Basket gelecek. Impact, My Impact olarak Account ekranina eklenecek
+- Kullanici login degilse ve favori ikonunu tiklarsa "Favorilere eklemek icin Login olmalisiniz" gibi bir uyari mesaji almali.
+
+
+Versiyon 2
+
+- 2 adimda AI ile listing. Urunun fotograflarini cektigimde veya var olan fotografi yukledigimde AI resimden yola cikarak Urunun tum bilgilerini hazirlayip otomatik olarak listing cikacak.
+- Urun detay ekraninda urunun konumu harita uzerinde gosterilecek
+- Kullanicilari favoriye ekleme

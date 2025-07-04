@@ -195,23 +195,14 @@ class BasketViewController: UIViewController, UICollectionViewDataSource, UIColl
                 let basket = try await BasketManager.shared.getOrCreateBasket()
                 print("DEBUG: Got basket: \(basket)")
                 
-                // Load basket items with product details
+                // Load basket items with product details (basket_item tablosundan)
                 let items = try await NetworkManager.shared.getBasketItemsWithProducts()
                 print("DEBUG: Got basket items: \(items.count) items")
                 
-                // Filter out unavailable items
-                let availableItems = items.filter { item in
-                    if let isAvailable = item.listing.is_available {
-                        return isAvailable
-                    }
-                    return true // If is_available is nil, assume it's available
-                }
-                
-                print("DEBUG: Filtered to \(availableItems.count) available items")
-                
+                // Sepetteki tüm ürünleri göster (filtreleme yok)
                 await MainActor.run {
-                    self.basketItems = availableItems
-                    print("DEBUG: Updated basketItems array with \(availableItems.count) items")
+                    self.basketItems = items
+                    print("DEBUG: Updated basketItems array with \(items.count) items")
                     self.updateUI()
                 }
             } catch {
@@ -265,7 +256,7 @@ class BasketViewController: UIViewController, UICollectionViewDataSource, UIColl
         print("DEBUG: cellForItemAt called for index \(indexPath.item)")
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "BasketItemCell", for: indexPath) as! BasketItemCell
         let basketItem = basketItems[indexPath.item]
-        print("DEBUG: Configuring cell with product: \(basketItem.listing.title)")
+        print("DEBUG: Configuring cell with product: \(basketItem.listing.title ?? "nil")")
         cell.configure(with: basketItem.listing)
         cell.removeButton.tag = indexPath.item
         cell.removeButton.addTarget(self, action: #selector(removeItemTapped(_:)), for: .touchUpInside)
@@ -316,6 +307,10 @@ class BasketViewController: UIViewController, UICollectionViewDataSource, UIColl
 
 class BasketItemCell: UICollectionViewCell {
     
+    private var currentImagePath: String?
+    private var imageLoadTask: Task<Void, Never>?
+    private var imageLoadToken: UUID?
+    
     private let productImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
@@ -353,87 +348,175 @@ class BasketItemCell: UICollectionViewCell {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupUI()
+        contentView.addSubview(productImageView)
+        contentView.addSubview(titleLabel)
+        contentView.addSubview(priceLabel)
+        contentView.addSubview(removeButton)
+        NSLayoutConstraint.activate([
+            productImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
+            productImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            productImageView.widthAnchor.constraint(equalToConstant: 80),
+            productImageView.heightAnchor.constraint(equalToConstant: 80),
+            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: 12),
+            titleLabel.trailingAnchor.constraint(equalTo: removeButton.leadingAnchor, constant: -8),
+            priceLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            priceLabel.leadingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: 12),
+            priceLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
+            removeButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            removeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
+            removeButton.widthAnchor.constraint(equalToConstant: 32),
+            removeButton.heightAnchor.constraint(equalToConstant: 32)
+        ])
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupUI() {
-        contentView.backgroundColor = .systemBackground
-        contentView.layer.cornerRadius = 12
-        contentView.layer.shadowColor = UIColor.black.cgColor
-        contentView.layer.shadowOpacity = 0.1
-        contentView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        contentView.layer.shadowRadius = 4
-        
-        contentView.addSubview(productImageView)
-        contentView.addSubview(titleLabel)
-        contentView.addSubview(priceLabel)
-        contentView.addSubview(removeButton)
-        
-        NSLayoutConstraint.activate([
-            productImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            productImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            productImageView.widthAnchor.constraint(equalToConstant: 80),
-            productImageView.heightAnchor.constraint(equalToConstant: 80),
-            
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: 12),
-            titleLabel.trailingAnchor.constraint(equalTo: removeButton.leadingAnchor, constant: -8),
-            
-            priceLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            priceLabel.leadingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: 12),
-            priceLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
-            
-            removeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            removeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            removeButton.widthAnchor.constraint(equalToConstant: 24),
-            removeButton.heightAnchor.constraint(equalToConstant: 24)
-        ])
-    }
-    
     func configure(with product: Product) {
+        var product = product
+        // Eğer image_url yoksa ve listing_photos varsa, image_url'u ilk fotoğraf path'i ile doldur
+        if (product.image_url == nil || product.image_url?.isEmpty == true),
+           let photos = product.listing_photos, let firstPhoto = photos.first {
+            product = Product(
+                id: product.id,
+                title: product.title,
+                description: product.description,
+                user_id: product.user_id,
+                category_id: product.category_id,
+                price: product.price,
+                isFavorite: product.isFavorite,
+                image_url: firstPhoto.path, // image_url'u set et
+                location: product.location,
+                latitude: product.latitude,
+                longitude: product.longitude,
+                created_at: product.created_at,
+                user_info: product.user_info,
+                listing_photos: product.listing_photos,
+                is_available: product.is_available,
+                is_in_basket: product.is_in_basket
+            )
+        }
         titleLabel.text = product.title
         priceLabel.text = "£\(product.priceAsDouble ?? 0)"
+        titleLabel.textColor = .label
+        priceLabel.textColor = .systemGreen
+        contentView.alpha = 1.0
         
-        // Show availability status
-        if let isAvailable = product.is_available, !isAvailable {
-            titleLabel.textColor = .systemGray
-            priceLabel.textColor = .systemGray
-            contentView.alpha = 0.6
-            
-            // Add "Not Available" label
-            let notAvailableLabel = UILabel()
-            notAvailableLabel.text = "Not Available"
-            notAvailableLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
-            notAvailableLabel.textColor = .systemRed
-            notAvailableLabel.translatesAutoresizingMaskIntoConstraints = false
-            
-            contentView.addSubview(notAvailableLabel)
-            NSLayoutConstraint.activate([
-                notAvailableLabel.topAnchor.constraint(equalTo: priceLabel.bottomAnchor, constant: 4),
-                notAvailableLabel.leadingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: 12)
-            ])
-        } else {
-            titleLabel.textColor = .label
-            priceLabel.textColor = .systemGreen
-            contentView.alpha = 1.0
-        }
+        // Debug: Print product info
+        print("🔍 Configuring BasketItemCell:")
+        print("   - Product ID: \(product.id?.description ?? "nil")")
+        print("   - Title: \(product.title ?? "nil")")
+        print("   - Image URL: \(product.image_url ?? "nil")")
+        print("   - Listing Photos: \(product.listing_photos?.count ?? 0)")
         
-        // Load image if available
-        if let imageUrl = product.image_url, let url = URL(string: imageUrl) {
-            URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-                if let data = data, let image = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        self?.productImageView.image = image
+        // Reset image view
+        productImageView.image = nil
+        productImageView.backgroundColor = UIColor.systemGray6
+        currentImagePath = nil
+        imageLoadTask?.cancel()
+        let token = UUID()
+        imageLoadToken = token
+        
+        // Home ekranındaki mantıkla aynı şekilde yükle
+        if let imageUrl = product.image_url, !imageUrl.isEmpty {
+            print("   - Loading image from: \(imageUrl)")
+            let fullUrl: URL?
+            if imageUrl.hasPrefix("http") {
+                fullUrl = URL(string: imageUrl)
+            } else {
+                let constructedUrl = "\(NetworkManager.shared.baseURL)\(imageUrl)"
+                fullUrl = URL(string: constructedUrl)
+            }
+            if let url = fullUrl {
+                print("   - Final URL: \(String(describing: url))")
+                imageLoadTask = Task { [weak self] in
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        await MainActor.run {
+                            guard self?.imageLoadToken == token else { return }
+                            if let image = UIImage(data: data) {
+                                print("   - ✅ Image loaded successfully")
+                                self?.productImageView.image = image
+                                self?.productImageView.backgroundColor = .clear
+                            } else {
+                                print("   - ❌ Image data invalid")
+                                self?.showPlaceholderImage()
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            guard self?.imageLoadToken == token else { return }
+                            print("   - ❌ Image loading failed: \(error.localizedDescription)")
+                            self?.showPlaceholderImage()
+                        }
                     }
                 }
-            }.resume()
+            } else {
+                print("   - ❌ Invalid constructed URL: \(imageUrl)")
+                showPlaceholderImage()
+            }
+        } else if let id = product.id {
+            // image_url ve listing_photos yoksa, API'den çek
+            print("   - No image_url or listing_photos, fetching from API for listing_id: \(id)")
+            imageLoadTask = Task { [weak self] in
+                do {
+                    let photos = try await NetworkManager.shared.fetchListingPhotos(listingId: id)
+                    if let firstPhoto = photos.first {
+                        print("   - Got photo from API for listing_id \(id): \(firstPhoto.path) (photo.listing_id: \(firstPhoto.listing_id))")
+                        let path = firstPhoto.path
+                        let fullUrl: URL?
+                        if path.hasPrefix("http") {
+                            fullUrl = URL(string: path)
+                        } else {
+                            let constructedUrl = "\(NetworkManager.shared.baseURL)\(path)"
+                            fullUrl = URL(string: constructedUrl)
+                        }
+                        if let url = fullUrl {
+                            print("   - Final URL: \(String(describing: url))")
+                            do {
+                                let (data, _) = try await URLSession.shared.data(from: url)
+                                await MainActor.run {
+                                    guard self?.imageLoadToken == token else { return }
+                                    if let image = UIImage(data: data) {
+                                        print("   - ✅ Image loaded successfully")
+                                        self?.productImageView.image = image
+                                        self?.productImageView.backgroundColor = .clear
+                                    } else {
+                                        print("   - ❌ Image data invalid")
+                                        self?.showPlaceholderImage()
+                                    }
+                                }
+                            } catch {
+                                await MainActor.run {
+                                    guard self?.imageLoadToken == token else { return }
+                                    print("   - ❌ Image loading failed: \(error.localizedDescription)")
+                                    self?.showPlaceholderImage()
+                                }
+                            }
+                        } else {
+                            print("   - ❌ Invalid constructed URL: \(path)")
+                            await MainActor.run { self?.showPlaceholderImage() }
+                        }
+                    } else {
+                        print("   - ❌ No valid image URL available (API'den de gelmedi)")
+                        await MainActor.run { self?.showPlaceholderImage() }
+                    }
+                } catch {
+                    print("   - ❌ Failed to fetch listing photos for listing_id \(id): \(error)")
+                    await MainActor.run { self?.showPlaceholderImage() }
+                }
+            }
         } else {
-            productImageView.image = UIImage(systemName: "photo")
-            productImageView.tintColor = .systemGray3
+            print("   - ❌ No valid image URL available")
+            showPlaceholderImage()
         }
+    }
+    
+    private func showPlaceholderImage() {
+        productImageView.image = UIImage(systemName: "photo")
+        productImageView.tintColor = .systemGray3
+        productImageView.backgroundColor = .systemGray6
     }
 } 

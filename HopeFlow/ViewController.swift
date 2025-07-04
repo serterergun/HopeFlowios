@@ -26,6 +26,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     private var userLocation: CLLocation?
     private let sampleListingIDs = ["1", "2", "3", "4"]
+    private var basketListingIds: Set<Int> = []
 
     private let searchBar: UISearchBar = {
         let sb = UISearchBar()
@@ -53,12 +54,12 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         locationManager.startUpdatingLocation()
         setupSearchBar()
         setupCollectionView()
-        fetchProducts()
+        checkAppStateAndLoadData()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        fetchProducts()
+        checkAppStateAndLoadData()
     }
 
     private func setupSearchBar() {
@@ -90,18 +91,35 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         collectionView.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
     }
 
-    private func fetchProducts() {
+    private func checkAppStateAndLoadData() {
+        // 1. Kullanıcı login mi?
+        let isLoggedIn = AuthManager.shared.isLoggedIn
         Task {
-            do {
-                let products = try await NetworkManager.shared.fetchAllListings()
-                self.products = products
-                self.filteredProducts = products
-                self.groupProductsByCategory()
-                DispatchQueue.main.async {
-                    self.collectionView.reloadData()
+            // 2. Tüm ürünleri çek
+            let products = try? await NetworkManager.shared.fetchAllListings()
+            var updatedProducts = products ?? []
+            var basketItems: [BasketItemWithProduct] = []
+            if isLoggedIn {
+                // 3. Kullanıcı login ise, sepeti kontrol et
+                basketItems = (try? await NetworkManager.shared.getBasketItemsWithProducts()) ?? []
+                let basketListingIds = Set(basketItems.map { $0.listing_id })
+                // Her ürünün is_in_basket alanını güncelle
+                updatedProducts = updatedProducts.map { product in
+                    var mutableProduct = product
+                    if let id = product.id {
+                        mutableProduct.is_in_basket = basketListingIds.contains(id)
+                    } else {
+                        mutableProduct.is_in_basket = false
+                    }
+                    return mutableProduct
                 }
-            } catch {
-                print("Failed to fetch products: \(error)")
+            }
+            await MainActor.run {
+                self.products = updatedProducts
+                self.filteredProducts = updatedProducts
+                self.groupProductsByCategory()
+                self.collectionView.reloadData()
+                // Sepet badge'i veya başka bir gösterge burada güncellenebilir
             }
         }
     }
@@ -115,19 +133,25 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     private func createCompositionalLayout() -> UICollectionViewLayout {
         return UICollectionViewCompositionalLayout { sectionIndex, _ in
             // Item
-            let itemSize = NSCollectionLayoutSize(widthDimension: .absolute(200), heightDimension: .estimated(260))
+            let itemSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(0.5),
+                heightDimension: .estimated(260)
+            )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             // Group
-            let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .estimated(260))
-            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-            group.interItemSpacing = .fixed(26)
+            let groupSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .estimated(260)
+            )
+            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item, item])
+            group.interItemSpacing = .fixed(2) // 2pt boşluk
 
             // Section
             let section = NSCollectionLayoutSection(group: group)
-            section.orthogonalScrollingBehavior = .continuous
-            section.contentInsets = NSDirectionalEdgeInsets(top: -8, leading: 12, bottom: 32, trailing: 16)
-            section.interGroupSpacing = 12
+            section.orthogonalScrollingBehavior = .none
+            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 2, bottom: 16, trailing: 2)
+            section.interGroupSpacing = 8
 
             // Header
             let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(56))
@@ -208,7 +232,7 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
                 ownerName = "\(userInfo.first_name ?? "") \(userInfo.last_name_initial ?? "")"
             }
             var distanceString: String? = nil
-            if let userLoc = userLocation, let lat = product.latitude, let lon = product.longitude {
+            if let userLoc = userLocation, let lat = product.latitudeAsDouble, let lon = product.longitudeAsDouble {
                 let productLoc = CLLocation(latitude: lat, longitude: lon)
                 let distance = userLoc.distance(from: productLoc)
                 distanceString = distance < 1000

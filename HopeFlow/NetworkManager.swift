@@ -461,41 +461,41 @@ class NetworkManager {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
-        var data = Data()
+        var body = Data()
         
         // Image data
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw NetworkError.invalidData
         }
         
-        data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-        data.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        data.append(imageData)
-        data.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
         
         // listing_id
-        data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"listing_id\"\r\n\r\n".data(using: .utf8)!)
-        data.append("\(listingId)\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"listing_id\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(listingId)\r\n".data(using: .utf8)!)
         
         // is_primary
-        data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"is_primary\"\r\n\r\n".data(using: .utf8)!)
-        data.append("\(isPrimary)\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"is_primary\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(isPrimary)\r\n".data(using: .utf8)!)
         
-        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
-        request.httpBody = data
+        request.httpBody = body
         
-        let (responseData, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: responseData)["detail"] {
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["detail"] {
                 throw NetworkError.serverError(errorMessage)
             }
             throw NetworkError.serverError("Failed to upload photo")
@@ -503,7 +503,7 @@ class NetworkManager {
         
         // Parse response to get photo details
         do {
-            let photoResponse = try JSONDecoder().decode(ListingPhotoResponse.self, from: responseData)
+            let photoResponse = try JSONDecoder().decode(ListingPhotoResponse.self, from: data)
             return photoResponse
         } catch {
             throw NetworkError.decodingError
@@ -537,7 +537,7 @@ class NetworkManager {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
-        var data = Data()
+        var body = Data()
         
         // Text fields
         let textFields = [
@@ -550,22 +550,22 @@ class NetworkManager {
         ]
         
         for (key, value) in textFields {
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
-            data.append("\(value)\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
         }
         
         // Optional fields
         if let price = price {
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"price\"\r\n\r\n".data(using: .utf8)!)
-            data.append("\(price)\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"price\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(price)\r\n".data(using: .utf8)!)
         }
         
         if let condition = condition {
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"condition\"\r\n\r\n".data(using: .utf8)!)
-            data.append("\(condition)\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"condition\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(condition)\r\n".data(using: .utf8)!)
         }
         
         // Images
@@ -574,32 +574,32 @@ class NetworkManager {
                 continue
             }
             
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"photos\"; filename=\"photo_\(index).jpg\"\r\n".data(using: .utf8)!)
-            data.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-            data.append(imageData)
-            data.append("\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photos\"; filename=\"photo_\(index).jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
         }
         
-        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
-        request.httpBody = data
+        request.httpBody = body
         
-        let (responseData, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: responseData)["detail"] {
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["detail"] {
                 throw NetworkError.serverError(errorMessage)
             }
             throw NetworkError.serverError("Failed to create listing with photos")
         }
         
         do {
-            let product = try JSONDecoder().decode(Product.self, from: responseData)
+            let product = try JSONDecoder().decode(Product.self, from: data)
             return product
         } catch {
             throw NetworkError.decodingError

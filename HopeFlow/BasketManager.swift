@@ -22,6 +22,10 @@ class BasketManager {
     }
     
     func addItemToBasket(listingId: Int) async throws -> BasketItemResponse {
+        // Sepette aynı ürün var mı kontrolü
+        if basketItems.contains(where: { $0.listing_id == listingId }) {
+            throw NetworkError.serverError("This product is already in your basket.")
+        }
         let basket = try await getOrCreateBasket()
         let basketItem = try await NetworkManager.shared.addItemToBasket(basketId: basket.id, listingId: listingId)
         

@@ -128,6 +128,27 @@ class ProductCell: UICollectionViewCell {
         return v
     }()
     
+    let inBasketContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemRed
+        view.layer.cornerRadius = 8
+        view.layer.masksToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isHidden = true
+        return view
+    }()
+    
+    let inBasketLabel: UILabel = {
+        let label = UILabel()
+        label.text = "IN BASKET"
+        label.font = UIFont.systemFont(ofSize: 13, weight: .bold)
+        label.textColor = .white
+        label.backgroundColor = .clear
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.isHidden = false
+        return label
+    }()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -167,6 +188,8 @@ class ProductCell: UICollectionViewCell {
         productImageView.addSubview(distanceContainerView)
         distanceContainerView.addSubview(distanceIconView)
         distanceContainerView.addSubview(distanceLabel)
+        contentView.addSubview(inBasketContainerView)
+        inBasketContainerView.addSubview(inBasketLabel)
         
         NSLayoutConstraint.activate([
             productImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -188,11 +211,10 @@ class ProductCell: UICollectionViewCell {
             ownerNameLabel.centerYAnchor.constraint(equalTo: overlayView.centerYAnchor),
             ownerNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: overlayView.trailingAnchor, constant: -8),
             
-            favoriteBlurView.topAnchor.constraint(equalTo: productImageView.topAnchor, constant: 8),
-            favoriteBlurView.trailingAnchor.constraint(equalTo: productImageView.trailingAnchor, constant: -8),
+            favoriteBlurView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            favoriteBlurView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
             favoriteBlurView.widthAnchor.constraint(equalToConstant: 32),
             favoriteBlurView.heightAnchor.constraint(equalToConstant: 32),
-            
             favoriteButton.centerXAnchor.constraint(equalTo: favoriteBlurView.centerXAnchor),
             favoriteButton.centerYAnchor.constraint(equalTo: favoriteBlurView.centerYAnchor),
             favoriteButton.widthAnchor.constraint(equalToConstant: 24),
@@ -221,7 +243,14 @@ class ProductCell: UICollectionViewCell {
             distanceLabel.leadingAnchor.constraint(equalTo: distanceIconView.trailingAnchor, constant: 4),
             distanceLabel.trailingAnchor.constraint(equalTo: distanceContainerView.trailingAnchor, constant: -8),
             distanceLabel.centerYAnchor.constraint(equalTo: distanceContainerView.centerYAnchor, constant: 1),
-            distanceLabel.heightAnchor.constraint(equalTo: distanceContainerView.heightAnchor)
+            distanceLabel.heightAnchor.constraint(equalTo: distanceContainerView.heightAnchor),
+            
+            inBasketContainerView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            inBasketContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            inBasketLabel.topAnchor.constraint(equalTo: inBasketContainerView.topAnchor, constant: 2),
+            inBasketLabel.bottomAnchor.constraint(equalTo: inBasketContainerView.bottomAnchor, constant: -2),
+            inBasketLabel.leadingAnchor.constraint(equalTo: inBasketContainerView.leadingAnchor, constant: 8),
+            inBasketLabel.trailingAnchor.constraint(equalTo: inBasketContainerView.trailingAnchor, constant: -8)
         ])
     }
     
@@ -234,7 +263,7 @@ class ProductCell: UICollectionViewCell {
         
         // Debug: Print product info
         print("🔍 Configuring ProductCell:")
-        print("   - Product ID: \(product.id ?? 0)")
+        print("   - Product ID: \(product.id?.description ?? "nil")")
         print("   - Title: \(product.title ?? "nil")")
         print("   - Image URL: \(product.image_url ?? "nil")")
         
@@ -258,11 +287,8 @@ class ProductCell: UICollectionViewCell {
         // Load product image if available
         if let imageUrl = product.image_url, !imageUrl.isEmpty {
             print("   - Loading image from: \(imageUrl)")
-            
-            // Handle both local file paths and full URLs
-            let fullUrl: URL
+            let fullUrl: URL?
             if imageUrl.hasPrefix("http") {
-                // Full URL (S3 or external)
                 guard let url = URL(string: imageUrl) else {
                     print("   - ❌ Invalid URL format: \(imageUrl)")
                     showPlaceholderImage()
@@ -280,26 +306,32 @@ class ProductCell: UICollectionViewCell {
                 fullUrl = url
             }
             
-            print("   - Final URL: \(fullUrl)")
+            print("   - Final URL: \(String(describing: fullUrl))")
             
             // Show loading state
             productImageView.backgroundColor = UIColor.systemGray6
             
-            URLSession.shared.dataTask(with: fullUrl) { [weak self] data, response, error in
-                DispatchQueue.main.async {
-                    if let data = data, let image = UIImage(data: data) {
-                        print("   - ✅ Image loaded successfully")
-                        self?.productImageView.image = image
-                        self?.productImageView.backgroundColor = .clear
-                    } else {
-                        print("   - ❌ Image loading failed: \(error?.localizedDescription ?? "Unknown error")")
-                        if let httpResponse = response as? HTTPURLResponse {
-                            print("   - HTTP Status: \(httpResponse.statusCode)")
+            if let url = fullUrl {
+                print("   - Final URL: \(url)")
+                URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+                    DispatchQueue.main.async {
+                        if let data = data, let image = UIImage(data: data) {
+                            print("   - ✅Image loaded successfully")
+                            self?.productImageView.image = image
+                            self?.productImageView.backgroundColor = .clear
+                        } else {
+                            print("   - ❌ Image loading failed: \(error?.localizedDescription ?? "Unknown error")")
+                            if let httpResponse = response as? HTTPURLResponse {
+                                print("   - HTTP Status: \(httpResponse.statusCode)")
+                            }
+                            self?.showPlaceholderImage()
                         }
-                        self?.showPlaceholderImage()
                     }
-                }
-            }.resume()
+                }.resume()
+            } else {
+                print("   - ❌ Invalid constructed URL: \(String(describing: fullUrl))")
+                showPlaceholderImage()
+            }
         } else {
             print("   - ❌ No image URL available")
             showPlaceholderImage()
@@ -320,6 +352,13 @@ class ProductCell: UICollectionViewCell {
         } else {
             distanceLabel.isHidden = true
             distanceIconView.isHidden = true
+        }
+        
+        // Sepette mi yazısını göster
+        if product.is_in_basket == true {
+            inBasketContainerView.isHidden = false
+        } else {
+            inBasketContainerView.isHidden = true
         }
     }
     

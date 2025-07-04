@@ -79,7 +79,7 @@ class MyFavoriteViewController: UIViewController, UICollectionViewDataSource, UI
             ownerName = "\(userInfo.first_name ?? "") \(userInfo.last_name_initial ?? "")"
         }
         var distanceString: String? = nil
-        if let userLoc = ViewController.userLocation, let lat = product.latitude, let lon = product.longitude {
+        if let userLoc = ViewController.userLocation, let lat = product.latitudeAsDouble, let lon = product.longitudeAsDouble {
             let productLoc = CLLocation(latitude: lat, longitude: lon)
             let distance = userLoc.distance(from: productLoc)
             distanceString = distance < 1000
