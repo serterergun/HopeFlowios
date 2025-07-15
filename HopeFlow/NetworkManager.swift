@@ -121,40 +121,91 @@ class NetworkManager {
         }
     }
     
-    func login(email: String, password: String) async throws -> User {
-        guard let url = URL(string: "\(baseURL)/auth/login") else {
+    func login(email: String, password: String) async throws -> (user: User, token: String) {
+        // Step 1: Get token from authentication endpoint
+        guard let tokenURL = URL(string: "\(baseURL)/api/v1/token") else {
             throw NetworkError.invalidURL
         }
         
-        let parameters: [String: Any] = [
-            "email": email,
-            "password": password
-        ]
+        // Prepare token request
+        let tokenParams: [String: Any] = ["email": email, "password": password]
+        var tokenRequest = URLRequest(url: tokenURL)
+        tokenRequest.httpMethod = "POST"
+        tokenRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        tokenRequest.httpBody = try JSONSerialization.data(withJSONObject: tokenParams)
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
+        #if DEBUG
+        print("DEBUG: Requesting token from: \(tokenURL)")
+        #endif
         
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
+        // Execute token request
+        let (tokenData, tokenResponse) = try await URLSession.shared.data(for: tokenRequest)
+        guard let tokenHttpResponse = tokenResponse as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["message"] {
+        #if DEBUG
+        print("DEBUG: Token response status: \(tokenHttpResponse.statusCode)")
+        #endif
+        
+        // Handle token errors
+        guard (200...299).contains(tokenHttpResponse.statusCode) else {
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: tokenData)["detail"] {
                 throw NetworkError.serverError(errorMessage)
             }
-            throw NetworkError.serverError("Unknown error occurred")
+            throw NetworkError.serverError("Token request failed")
         }
         
-        do {
-            let user = try JSONDecoder().decode(User.self, from: data)
-            return user
-        } catch {
+        // Parse token
+        guard let tokenResponseDict = try? JSONSerialization.jsonObject(with: tokenData) as? [String: Any],
+            let token = tokenResponseDict["access_token"] as? String else {
             throw NetworkError.decodingError
         }
+        
+        #if DEBUG
+        print("DEBUG: Token received")
+        #endif
+        
+        // Step 2: Get user data using the token
+        guard let userURL = URL(string: "\(baseURL)/api/v1/users/me") else {
+            throw NetworkError.invalidURL
+        }
+        
+        // Prepare user request
+        var userRequest = URLRequest(url: userURL)
+        userRequest.httpMethod = "GET"
+        userRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        #if DEBUG
+        print("DEBUG: Requesting user data from: \(userURL)")
+        #endif
+        
+        // Execute user request
+        let (userData, userResponse) = try await URLSession.shared.data(for: userRequest)
+        guard let userHttpResponse = userResponse as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        #if DEBUG
+        print("DEBUG: User response status: \(userHttpResponse.statusCode)")
+        #endif
+        
+        // Handle user errors
+        guard (200...299).contains(userHttpResponse.statusCode) else {
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: userData)["message"] {
+                throw NetworkError.serverError(errorMessage)
+            }
+            throw NetworkError.serverError("User data request failed")
+        }
+        
+        // Parse user
+        let user = try JSONDecoder().decode(User.self, from: userData)
+        
+        #if DEBUG
+        print("DEBUG: User data received for: \(user.email)")
+        #endif
+        
+        return (user, token)
     }
     
     func getCurrentUser(token: String) async throws -> User {
@@ -178,56 +229,6 @@ class NetworkManager {
             let user = try JSONDecoder().decode(User.self, from: data)
             return user
         } catch {
-            throw NetworkError.decodingError
-        }
-    }
-    
-    // New login function that returns token
-    func loginAndGetToken(email: String, password: String) async throws -> (User?, String) {
-        guard let url = URL(string: "\(baseURL)/api/v1/token") else {
-            throw NetworkError.invalidURL
-        }
-        let parameters: [String: Any] = [
-            "email": email,
-            "password": password
-        ]
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-        
-        print("DEBUG: Sending login request to: \(url)")
-        print("DEBUG: Login parameters: \(parameters)")
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
-        }
-        
-        print("DEBUG: Login response status code: \(httpResponse.statusCode)")
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["detail"] {
-                throw NetworkError.serverError(errorMessage)
-            }
-            throw NetworkError.serverError("Login failed")
-        }
-        
-        // Parse the response to get the token
-        do {
-            let responseDict = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            print("DEBUG: Login response: \(responseDict ?? [:])")
-            
-            guard let token = responseDict?["access_token"] as? String else {
-                print("DEBUG: No access_token found in response")
-                throw NetworkError.serverError("No token received")
-            }
-            
-            print("DEBUG: Token received: \(token)")
-            return (nil, token)
-        } catch {
-            print("DEBUG: Failed to parse login response: \(error)")
             throw NetworkError.decodingError
         }
     }
@@ -357,7 +358,7 @@ class NetworkManager {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
@@ -872,14 +873,17 @@ class NetworkManager {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Change 'data' to '_' since we don't use it in the success case
+        let (_, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: data)["detail"] {
+            // To access error details in failure case, temporarily capture data
+            let (errorData, _) = try await URLSession.shared.data(for: request)
+            if let errorMessage = try? JSONDecoder().decode([String: String].self, from: errorData)["detail"] {
                 throw NetworkError.serverError(errorMessage)
             }
             throw NetworkError.serverError("Failed to remove item from basket")

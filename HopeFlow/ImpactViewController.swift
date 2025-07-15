@@ -261,7 +261,7 @@ class ImpactViewController: UIViewController, UICollectionViewDataSource, UIColl
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(messageLabel)
         let appLabel = UILabel()
-        appLabel.text = "Shared via HopeFlow"
+        appLabel.text = "Shared via Charitivist"
         appLabel.font = UIFont.systemFont(ofSize: 13, weight: .regular)
         appLabel.textColor = UIColor(hex: "#8B5CF6")
         appLabel.textAlignment = .center

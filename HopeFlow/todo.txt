@@ -5,8 +5,22 @@
 - Urun detay sayfasinda Request Item yerine Make an Offer olacak
 - Urun detay sayfasinda urun sahibine mesaj gondermek icin Send Message butonu olmali. Yazilan mesajlar database'in listing_message tablosuna kaydedilecek
 - Kullanici register oldugunda kullanicinin mail adresine bir confirmation maili gonderilmeli ve kullanici confirm ettiginde kullanicinin kaydini tamamlamali.
-- Tabbed menude Impact yerine Basket gelecek. Impact, My Impact olarak Account ekranina eklenecek
 - Kullanici login degilse ve favori ikonunu tiklarsa "Favorilere eklemek icin Login olmalisiniz" gibi bir uyari mesaji almali.
+- Urun detay ekraninda urun sepete eklendikten sonra "View Basket" tiklandiginda Basket'a, "Continue Shopping" tiklandiginda Home ekranina gitmeli
+- Basket ekraninda urune ait hersey gozukmeli. Ekranin dizayni "aliexpress" tarzinda olabilir.
+- tum ekranlarda userin login olup olmadigi kontrol edilmeli
+
+
+- Purchase sistemi aktif hale getirilecek
+- Kullanicilar arasi mesajlasma satin alma uzerinden aktif hale getirilecek. Kullanici urunu satun aldiktan sonra satan kullancili ile yazisabilecek.
+- 
+App Domain Fikirleri
+
+alwaysgenerous
+
+
+
+
 
 
 Versiyon 2

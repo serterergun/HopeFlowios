@@ -42,5 +42,7 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>CFBundleDisplayName</key>
+	<string>Charitivist</string>
 </dict>
 </plist>

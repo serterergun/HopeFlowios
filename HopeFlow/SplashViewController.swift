@@ -1,22 +1,42 @@
 import UIKit
 
 class SplashViewController: UIViewController {
-    private let logoLabel: UILabel = {
-        let label = UILabel()
-        label.text = "HopeFlow"
-        label.font = UIFont.systemFont(ofSize: 44, weight: .bold)
-        label.textColor = UIColor(hex: "#6D28D9")
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
+    private let logoImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
     }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(hex: "#F5F3FF")
-        view.addSubview(logoLabel)
+        view.backgroundColor = .white
+        
+        // Load the logo image from the images folder
+        if let logoImage = UIImage(named: "logo") {
+            logoImageView.image = logoImage
+        } else {
+            // Fallback to text if image is not found
+            let fallbackLabel = UILabel()
+            fallbackLabel.text = "Charitivist"
+            fallbackLabel.font = UIFont.systemFont(ofSize: 44, weight: .bold)
+            fallbackLabel.textColor = UIColor(hex: "#6D28D9")
+            fallbackLabel.textAlignment = .center
+            fallbackLabel.translatesAutoresizingMaskIntoConstraints = false
+            logoImageView.addSubview(fallbackLabel)
+            
+            NSLayoutConstraint.activate([
+                fallbackLabel.centerXAnchor.constraint(equalTo: logoImageView.centerXAnchor),
+                fallbackLabel.centerYAnchor.constraint(equalTo: logoImageView.centerYAnchor)
+            ])
+        }
+        
+        view.addSubview(logoImageView)
         NSLayoutConstraint.activate([
-            logoLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            logoLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            logoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            logoImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            logoImageView.widthAnchor.constraint(equalToConstant: 200),
+            logoImageView.heightAnchor.constraint(equalToConstant: 200)
         ])
     }
     override func viewDidAppear(_ animated: Bool) {

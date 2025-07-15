@@ -24,18 +24,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		04A877372DED1A91009678D3 /* HopeFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopeFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		04A8774D2DED1A93009678D3 /* HopeFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HopeFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		04A877572DED1A93009678D3 /* HopeFlowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HopeFlowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		04A877372DED1A91009678D3 /* Charitivist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Charitivist.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		04A8774D2DED1A93009678D3 /* CharitivistTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CharitivistTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		04A877572DED1A93009678D3 /* CharitivistUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CharitivistUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		04A8775F2DED1A93009678D3 /* Exceptions for "HopeFlow" folder in "HopeFlow" target */ = {
+		04A8775F2DED1A93009678D3 /* Exceptions for "HopeFlow" folder in "Charitivist" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 04A877362DED1A91009678D3 /* HopeFlow */;
+			target = 04A877362DED1A91009678D3 /* Charitivist */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -43,7 +43,7 @@
 		04A877392DED1A91009678D3 /* HopeFlow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				04A8775F2DED1A93009678D3 /* Exceptions for "HopeFlow" folder in "HopeFlow" target */,
+				04A8775F2DED1A93009678D3 /* Exceptions for "HopeFlow" folder in "Charitivist" target */,
 			);
 			path = HopeFlow;
 			sourceTree = "<group>";
@@ -98,9 +98,9 @@
 		04A877382DED1A91009678D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				04A877372DED1A91009678D3 /* HopeFlow.app */,
-				04A8774D2DED1A93009678D3 /* HopeFlowTests.xctest */,
-				04A877572DED1A93009678D3 /* HopeFlowUITests.xctest */,
+				04A877372DED1A91009678D3 /* Charitivist.app */,
+				04A8774D2DED1A93009678D3 /* CharitivistTests.xctest */,
+				04A877572DED1A93009678D3 /* CharitivistUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,9 +108,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		04A877362DED1A91009678D3 /* HopeFlow */ = {
+		04A877362DED1A91009678D3 /* Charitivist */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 04A877602DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlow" */;
+			buildConfigurationList = 04A877602DED1A93009678D3 /* Build configuration list for PBXNativeTarget "Charitivist" */;
 			buildPhases = (
 				04A877332DED1A91009678D3 /* Sources */,
 				04A877342DED1A91009678D3 /* Frameworks */,
@@ -123,16 +123,16 @@
 			fileSystemSynchronizedGroups = (
 				04A877392DED1A91009678D3 /* HopeFlow */,
 			);
-			name = HopeFlow;
+			name = Charitivist;
 			packageProductDependencies = (
 			);
-			productName = HopeFlow;
-			productReference = 04A877372DED1A91009678D3 /* HopeFlow.app */;
+			productName = Charitivist;
+			productReference = 04A877372DED1A91009678D3 /* Charitivist.app */;
 			productType = "com.apple.product-type.application";
 		};
-		04A8774C2DED1A93009678D3 /* HopeFlowTests */ = {
+		04A8774C2DED1A93009678D3 /* CharitivistTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 04A877652DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlowTests" */;
+			buildConfigurationList = 04A877652DED1A93009678D3 /* Build configuration list for PBXNativeTarget "CharitivistTests" */;
 			buildPhases = (
 				04A877492DED1A93009678D3 /* Sources */,
 				04A8774A2DED1A93009678D3 /* Frameworks */,
@@ -146,16 +146,16 @@
 			fileSystemSynchronizedGroups = (
 				04A877502DED1A93009678D3 /* HopeFlowTests */,
 			);
-			name = HopeFlowTests;
+			name = CharitivistTests;
 			packageProductDependencies = (
 			);
-			productName = HopeFlowTests;
-			productReference = 04A8774D2DED1A93009678D3 /* HopeFlowTests.xctest */;
+			productName = CharitivistTests;
+			productReference = 04A8774D2DED1A93009678D3 /* CharitivistTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		04A877562DED1A93009678D3 /* HopeFlowUITests */ = {
+		04A877562DED1A93009678D3 /* CharitivistUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 04A877682DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlowUITests" */;
+			buildConfigurationList = 04A877682DED1A93009678D3 /* Build configuration list for PBXNativeTarget "CharitivistUITests" */;
 			buildPhases = (
 				04A877532DED1A93009678D3 /* Sources */,
 				04A877542DED1A93009678D3 /* Frameworks */,
@@ -169,11 +169,11 @@
 			fileSystemSynchronizedGroups = (
 				04A8775A2DED1A93009678D3 /* HopeFlowUITests */,
 			);
-			name = HopeFlowUITests;
+			name = CharitivistUITests;
 			packageProductDependencies = (
 			);
-			productName = HopeFlowUITests;
-			productReference = 04A877572DED1A93009678D3 /* HopeFlowUITests.xctest */;
+			productName = CharitivistUITests;
+			productReference = 04A877572DED1A93009678D3 /* CharitivistUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -184,7 +184,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					04A877362DED1A91009678D3 = {
 						CreatedOnToolsVersion = 16.2;
@@ -213,9 +213,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				04A877362DED1A91009678D3 /* HopeFlow */,
-				04A8774C2DED1A93009678D3 /* HopeFlowTests */,
-				04A877562DED1A93009678D3 /* HopeFlowUITests */,
+				04A877362DED1A91009678D3 /* Charitivist */,
+				04A8774C2DED1A93009678D3 /* CharitivistTests */,
+				04A877562DED1A93009678D3 /* CharitivistUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -271,12 +271,12 @@
 /* Begin PBXTargetDependency section */
 		04A8774F2DED1A93009678D3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 04A877362DED1A91009678D3 /* HopeFlow */;
+			target = 04A877362DED1A91009678D3 /* Charitivist */;
 			targetProxy = 04A8774E2DED1A93009678D3 /* PBXContainerItemProxy */;
 		};
 		04A877592DED1A93009678D3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 04A877362DED1A91009678D3 /* HopeFlow */;
+			target = 04A877362DED1A91009678D3 /* Charitivist */;
 			targetProxy = 04A877582DED1A93009678D3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -289,7 +289,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HopeFlow/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -303,7 +302,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlow;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.Charitivist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -318,7 +317,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HopeFlow/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -332,7 +330,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlow;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.Charitivist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -375,6 +373,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = XTQWDB545T;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -438,6 +437,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = XTQWDB545T;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -465,16 +465,15 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.CharitivistTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HopeFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HopeFlow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Charitivist.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Charitivist";
 			};
 			name = Debug;
 		};
@@ -484,16 +483,15 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.CharitivistTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HopeFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HopeFlow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Charitivist.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Charitivist";
 			};
 			name = Release;
 		};
@@ -502,15 +500,14 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.CharitivistUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = HopeFlow;
+				TEST_TARGET_NAME = Charitivist;
 			};
 			name = Debug;
 		};
@@ -519,15 +516,14 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = XTQWDB545T;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Datapare.HopeFlowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = Datapare.CharitivistUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = HopeFlow;
+				TEST_TARGET_NAME = Charitivist;
 			};
 			name = Release;
 		};
@@ -543,7 +539,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		04A877602DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlow" */ = {
+		04A877602DED1A93009678D3 /* Build configuration list for PBXNativeTarget "Charitivist" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				04A877612DED1A93009678D3 /* Debug */,
@@ -552,7 +548,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		04A877652DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlowTests" */ = {
+		04A877652DED1A93009678D3 /* Build configuration list for PBXNativeTarget "CharitivistTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				04A877662DED1A93009678D3 /* Debug */,
@@ -561,7 +557,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		04A877682DED1A93009678D3 /* Build configuration list for PBXNativeTarget "HopeFlowUITests" */ = {
+		04A877682DED1A93009678D3 /* Build configuration list for PBXNativeTarget "CharitivistUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				04A877692DED1A93009678D3 /* Debug */,

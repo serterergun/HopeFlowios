@@ -81,7 +81,7 @@ class MyImpactViewController: UIViewController {
 
         // Topluluk etkisi
         let communityLabel = UILabel()
-        communityLabel.text = "Together, HopeFlow users saved 1,200 items this month!"
+        communityLabel.text = "Together, Charitivist users saved 1,200 items this month!"
         communityLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         communityLabel.textColor = .systemBlue
         communityLabel.textAlignment = .center

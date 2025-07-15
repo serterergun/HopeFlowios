@@ -45,7 +45,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         cv.register(CategoryHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "CategoryHeader")
         return cv
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .homeBackground
@@ -61,7 +61,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         super.viewWillAppear(animated)
         checkAppStateAndLoadData()
     }
-
+    
     private func setupSearchBar() {
         view.addSubview(searchBar)
         searchBar.delegate = self
@@ -92,11 +92,10 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     private func checkAppStateAndLoadData() {
-        // 1. Kullanıcı login mi?
         let isLoggedIn = AuthManager.shared.isLoggedIn
         Task {
-            // 2. Tüm ürünleri çek
             let products = try? await NetworkManager.shared.fetchAllListings()
+            print("[DEBUG] API'den gelen ürün sayısı: \(products?.count ?? 0)")
             var updatedProducts = products ?? []
             var basketItems: [BasketItemWithProduct] = []
             if isLoggedIn {
@@ -114,9 +113,31 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
                     return mutableProduct
                 }
             }
+            // Eğer hiç ürün gelmiyorsa ve login değilse, test için bir mock ürün ekle
+            if updatedProducts.isEmpty && !isLoggedIn {
+                let mockProduct = Product(
+                    id: 9999,
+                    title: "Demo Product",
+                    description: "This is a demo product for guests.",
+                    user_id: nil,
+                    category_id: 1,
+                    price: "0",
+                    isFavorite: false,
+                    image_url: nil,
+                    location: "",
+                    latitude: nil,
+                    longitude: nil,
+                    created_at: nil,
+                    user_info: nil,
+                    listing_photos: nil,
+                    is_available: true
+                )
+                updatedProducts = [mockProduct]
+            }
             await MainActor.run {
                 self.products = updatedProducts
                 self.filteredProducts = updatedProducts
+                print("[DEBUG] filteredProducts count: \(self.filteredProducts.count)")
                 self.groupProductsByCategory()
                 self.collectionView.reloadData()
                 // Sepet badge'i veya başka bir gösterge burada güncellenebilir
@@ -125,9 +146,19 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     private func groupProductsByCategory() {
-        groupedProducts = Dictionary(grouping: filteredProducts) { product in
-            categoryNames[product.category_id ?? 0] ?? "Uncategorized"
+        var newGroupedProducts: [String: [Product]] = [:]
+        
+        for product in filteredProducts {
+            let categoryId = product.category_id ?? 0
+            let categoryName = categoryNames[categoryId] ?? "Uncategorized"
+            
+            if newGroupedProducts[categoryName] == nil {
+                newGroupedProducts[categoryName] = []
+            }
+            newGroupedProducts[categoryName]?.append(product)
         }
+        
+        groupedProducts = newGroupedProducts
     }
 
     private func createCompositionalLayout() -> UICollectionViewLayout {
@@ -173,6 +204,12 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     func showRangePicker() {
+        // Login kontrolü
+        if !AuthManager.shared.isLoggedIn {
+            showLoginRequiredAlert(message: "Login to filter by range")
+            return
+        }
+        
         let alert = UIAlertController(title: "Select Range", message: nil, preferredStyle: .actionSheet)
         let ranges: [Double] = [0.1, 0.3, 0.5, 1, 2, 5, 10, 25, 50, 100]
         for r in ranges {
@@ -186,26 +223,39 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     func showLocationPicker() {
+        // Login kontrolü
+        if !AuthManager.shared.isLoggedIn {
+            showLoginRequiredAlert(message: "Login to set custom location")
+            return
+        }
+        
         let picker = LocationPickerViewController()
         picker.delegate = self
         picker.modalPresentationStyle = .fullScreen
         present(picker, animated: true)
     }
+    
+    private func showLoginRequiredAlert(message: String) {
+        let alert = UIAlertController(title: "Login Required", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Login", style: .default) { [weak self] _ in
+            let loginVC = LoginViewController()
+            loginVC.modalPresentationStyle = .fullScreen
+            self?.present(loginVC, animated: true)
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
 
     @objc func addProductButtonTapped() {
         if !AuthManager.shared.isLoggedIn {
-            let loginVC = LoginViewController()
-            loginVC.modalPresentationStyle = .fullScreen
-            present(loginVC, animated: true)
+            showLoginRequiredAlert(message: "Login to add products")
             return
         }
     }
 
     @objc func purchaseButtonTapped() {
         if !AuthManager.shared.isLoggedIn {
-            let loginVC = LoginViewController()
-            loginVC.modalPresentationStyle = .fullScreen
-            present(loginVC, animated: true)
+            showLoginRequiredAlert(message: "Login to purchase items")
             return
         }
     }
@@ -242,16 +292,19 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
                 distanceString = "0 mi"
             }
             
-            // Set favorite state
+            // Set favorite state - sadece login olmuş kullanıcılar için
             var mutableProduct = product
-            if let id = product.id {
+            if let id = product.id, AuthManager.shared.isLoggedIn {
                 mutableProduct.isFavorite = FavoriteManager.shared.isFavorite(productId: id)
+            } else {
+                mutableProduct.isFavorite = false
             }
             
             let currentUserId = AuthManager.shared.currentUser?.id
             let isOwnProduct = (currentUserId != nil && product.user_id == currentUserId)
             
-            cell.configure(with: mutableProduct, ownerName: ownerName, favoriteAction: isOwnProduct ? nil : {
+            // Login olmayan kullanıcılar için favorite action'ı devre dışı bırak
+            let favoriteAction: (() -> Void)? = AuthManager.shared.isLoggedIn ? {
                 guard let id = mutableProduct.id, let userId = AuthManager.shared.currentUser?.id else { return }
                 if FavoriteManager.shared.isFavorite(productId: id) {
                     FavoriteManager.shared.removeFavorite(userId: userId, productId: id) { _ in
@@ -268,8 +321,10 @@ extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
                         }
                     }
                 }
-            }, distanceString: distanceString)
-            cell.setFavoriteButtonHidden(isOwnProduct)
+            } : nil
+            
+            cell.configure(with: mutableProduct, ownerName: ownerName, favoriteAction: favoriteAction, distanceString: distanceString)
+            cell.setFavoriteButtonHidden(isOwnProduct || !AuthManager.shared.isLoggedIn)
         }
         return cell
     }

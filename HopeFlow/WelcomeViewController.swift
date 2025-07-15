@@ -17,7 +17,7 @@ class WelcomeViewController: UIViewController {
 
         // Logo veya App adı
         let titleLabel = UILabel()
-        titleLabel.text = "HopeFlow"
+        titleLabel.text = "Charitivist"
         titleLabel.font = UIFont.systemFont(ofSize: 40, weight: .bold)
         titleLabel.textColor = .white
         titleLabel.textAlignment = .center
