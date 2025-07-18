@@ -25,7 +25,7 @@ class DonateViewController: UIViewController, UIImagePickerControllerDelegate, U
     private let postcodeField = UITextField()
     private let conditionField = UITextField()
     private let conditionPicker = UIPickerView()
-    private let conditionOptions = ["New", "Good", "Moderate"]
+    private let conditionOptions = ["Poor", "Fair", "Good", "Very Good", "As New"]
     private let charityField = UITextField()
     private let charityPicker = UIPickerView()
     private var charityOptions: [String] = []
