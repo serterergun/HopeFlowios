@@ -22,21 +22,15 @@ class AuthManager {
     func login(email: String, password: String) async throws {
         do {
             print("DEBUG: Starting login process for email: \(email)")
-            
-            // Use the new login method that returns both user and token
+            // Use the login method that returns both user and token
             let (user, token) = try await NetworkManager.shared.login(email: email, password: password)
             print("DEBUG: Login successful, token received")
-            
-            // Update auth state
             self.currentUser = user
             self.token = token
-            
             // Persist auth state
             UserDefaults.standard.set(token, forKey: "authToken")
             UserDefaults.standard.set(true, forKey: "isAuthenticated")
             print("DEBUG: Auth state updated")
-            
-            // Notify system
             NotificationCenter.default.post(name: .userDidLogin, object: nil)
             print("DEBUG: Login process completed successfully")
         } catch {
@@ -62,6 +56,10 @@ class AuthManager {
             // Clear any previous auth state
             UserDefaults.standard.set(false, forKey: "isAuthenticated")
             UserDefaults.standard.removeObject(forKey: "authToken")
+            // userId'yi kaydet
+            if let userId = user.id {
+                UserDefaults.standard.set(userId, forKey: "userId")
+            }
             
             NotificationCenter.default.post(name: .userDidRegister, object: nil)
         } catch {
@@ -84,14 +82,13 @@ class AuthManager {
             logout()
             return
         }
-        
         self.token = savedToken
         Task {
             do {
                 let user = try await NetworkManager.shared.getCurrentUser(token: savedToken)
                 await MainActor.run {
                     self.currentUser = user
-                    print("DEBUG: Auto-login successful for \(user.email)")
+                    print("DEBUG: Auto-login successful for \(user.email ?? "nil")")
                 }
             } catch {
                 print("DEBUG: Token validation failed: \(error)")
@@ -107,7 +104,6 @@ class AuthManager {
             logout()
             return false
         }
-        
         do {
             let user = try await NetworkManager.shared.getCurrentUser(token: token)
             await MainActor.run {
