@@ -5,6 +5,7 @@ class ProductDetailViewController: UIViewController {
     private var allPhotos: [ListingPhotoResponse] = []
     private var isLoadingPhotos = false
     private var isUISetup = false // Prevent multiple UI setup calls
+    var canMessageSeller: Bool = false // Satın alma kontrolü (şimdilik manuel)
     
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -161,6 +162,17 @@ class ProductDetailViewController: UIViewController {
         return button
     }()
     
+    private let messageButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Satıcıya Mesaj Gönder", for: .normal)
+        button.backgroundColor = .systemBlue
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 8
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isHidden = true // Başta gizli
+        return button
+    }()
+    
     init(product: Product) {
         self.product = product
         super.init(nibName: nil, bundle: nil)
@@ -186,6 +198,7 @@ class ProductDetailViewController: UIViewController {
             }
             await self?.checkProductAvailabilityAndLoadPhotos()
         }
+        setupMessageButton()
     }
     
     override func viewDidLayoutSubviews() {
@@ -204,13 +217,11 @@ class ProductDetailViewController: UIViewController {
             }
             return
         }
-        
         isLoadingPhotos = true
-        
         do {
-            // API: /basket-items/check-product?product_id=xxx
-            let urlString = "\(NetworkManager.shared.baseURL)/api/v1/basket-items/check-product?product_id=\(id)"
-            guard let url = URL(string: urlString) else {
+            // Sadece listing tablosunda ürün var mı kontrol et
+            let listingUrl = "\(NetworkManager.shared.baseURL)/api/v1/listings/\(id)"
+            guard let url = URL(string: listingUrl) else {
                 await MainActor.run {
                     self.updatePhotoGallery()
                 }
@@ -221,43 +232,23 @@ class ProductDetailViewController: UIViewController {
             if let token = AuthManager.shared.token {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
                 await MainActor.run {
-                    self.updatePhotoGallery()
+                    let alert = UIAlertController(title: "Error", message: "Product not found.", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
                 }
                 return
             }
-            struct ProductAvailabilityResponse: Decodable {
-                let product_id: Int
-                let is_in_basket: Bool
-                let is_available: Bool
-            }
-            let availability = try JSONDecoder().decode(ProductAvailabilityResponse.self, from: data)
-            self.product = Product(
-                id: self.product.id,
-                title: self.product.title,
-                description: self.product.description,
-                user_id: self.product.user_id,
-                category_id: self.product.category_id,
-                price: self.product.price,
-                isFavorite: self.product.isFavorite,
-                image_url: self.product.image_url,
-                location: self.product.location,
-                latitude: self.product.latitude,
-                longitude: self.product.longitude,
-                created_at: self.product.created_at,
-                user_info: self.product.user_info,
-                listing_photos: self.product.listing_photos,
-                is_available: availability.is_available
-            )
-            
-            // Load all photos for this product
-            await self.loadAllProductPhotos(listingId: id)
-            
-        } catch {
             await MainActor.run {
                 self.updatePhotoGallery()
+            }
+        } catch {
+            await MainActor.run {
+                let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                self.present(alert, animated: true)
             }
         }
     }
@@ -491,51 +482,24 @@ class ProductDetailViewController: UIViewController {
         }
 
         // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Checking Availability...", message: nil, preferredStyle: .alert)
+        let loadingAlert = UIAlertController(title: "Adding to Basket...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
 
         Task { [weak self] in
             do {
-                // Ürünün güncel durumunu kontrol et
-                let urlString = "\(NetworkManager.shared.baseURL)/api/v1/basket-items/check-product?product_id=\(listingId)"
-                guard let url = URL(string: urlString) else { throw NetworkError.invalidURL }
+                // 1. Ürün listing tablosunda var mı?
+                let listingUrl = "\(NetworkManager.shared.baseURL)/api/v1/listings/\(listingId)"
+                guard let url = URL(string: listingUrl) else { throw NetworkError.invalidURL }
                 var request = URLRequest(url: url)
                 request.httpMethod = "GET"
                 if let token = AuthManager.shared.token {
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 }
-                let (data, response) = try await URLSession.shared.data(for: request)
-                if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 404 {
-                        // Ürün sepette yok, sepete ekle
-                        let _ = try await BasketManager.shared.addItemToBasket(listingId: listingId)
-                        await MainActor.run {
-                            loadingAlert.dismiss(animated: true) {
-                                let alert = UIAlertController(title: "Added to Basket", message: "Item has been added to your basket!", preferredStyle: .alert)
-                                alert.addAction(UIAlertAction(title: "View Basket", style: .default) { [weak self] _ in
-                                    if let tabBarController = self?.tabBarController {
-                                        tabBarController.selectedIndex = 1 // Switch to Basket tab
-                                    }
-                                })
-                                alert.addAction(UIAlertAction(title: "Continue Shopping", style: .cancel))
-                                self?.present(alert, animated: true)
-                            }
-                        }
-                        return
-                    } else if !(200...299).contains(httpResponse.statusCode) {
-                    throw NetworkError.invalidResponse
-                    }
-                }
-                struct ProductAvailabilityResponse: Decodable {
-                    let product_id: Int
-                    let is_in_basket: Bool
-                    let is_available: Bool
-                }
-                let availability = try JSONDecoder().decode(ProductAvailabilityResponse.self, from: data)
-                if !availability.is_available {
+                let (_, listingResponse) = try await URLSession.shared.data(for: request)
+                if let httpResponse = listingResponse as? HTTPURLResponse, httpResponse.statusCode == 404 {
                     await MainActor.run {
                         loadingAlert.dismiss(animated: true) {
-                            let alert = UIAlertController(title: "Item Not Available", message: "This item is no longer available.", preferredStyle: .alert)
+                            let alert = UIAlertController(title: "Error", message: "Product not found.", preferredStyle: .alert)
                             alert.addAction(UIAlertAction(title: "OK", style: .default))
                             self?.present(alert, animated: true)
                         }
@@ -543,14 +507,14 @@ class ProductDetailViewController: UIViewController {
                     return
                 }
 
-                // Ürün müsait, sepete ekle
-                let _ = try await BasketManager.shared.addItemToBasket(listingId: listingId)
+                // 2. Sepete ekle (yeni endpoint ile)
+                let _ = try await NetworkManager.shared.addItemToBasketNew(listingId: listingId)
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
                         let alert = UIAlertController(title: "Added to Basket", message: "Item has been added to your basket!", preferredStyle: .alert)
                         alert.addAction(UIAlertAction(title: "View Basket", style: .default) { [weak self] _ in
                             if let tabBarController = self?.tabBarController {
-                                tabBarController.selectedIndex = 1 // Switch to Basket tab
+                                tabBarController.selectedIndex = 1
                             }
                         })
                         alert.addAction(UIAlertAction(title: "Continue Shopping", style: .cancel))
@@ -560,15 +524,7 @@ class ProductDetailViewController: UIViewController {
             } catch {
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
-                        var message = error.localizedDescription
-                        if let netError = error as? NetworkError {
-                            switch netError {
-                            case .serverError(let msg):
-                                message = msg
-                            default: break
-                            }
-                        }
-                        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+                        let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
                         self?.present(alert, animated: true)
                     }
@@ -596,6 +552,24 @@ class ProductDetailViewController: UIViewController {
         let alert = UIAlertController(title: "Send Message", message: "Message functionality will be implemented soon!", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+
+    private func setupMessageButton() {
+        view.addSubview(messageButton)
+        NSLayoutConstraint.activate([
+            messageButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            messageButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            messageButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            messageButton.heightAnchor.constraint(equalToConstant: 48)
+        ])
+        messageButton.addTarget(self, action: #selector(messageButtonTapped), for: .touchUpInside)
+        messageButton.isHidden = !canMessageSeller
+    }
+
+    @objc private func messageButtonTapped() {
+        let messageVC = MessageComposeViewController(listingId: product.id)
+        messageVC.modalPresentationStyle = .formSheet
+        present(messageVC, animated: true)
     }
 }
 
